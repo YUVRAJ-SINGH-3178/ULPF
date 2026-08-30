@@ -1,0 +1,58 @@
+name: ULPF Enterprise Continuous Integration
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test-and-verify:
+    name: Build, Lint, Test & Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsnappy-dev build-essential
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pip-audit ruff
+
+      - name: Code Quality & Linting (Ruff)
+        run: |
+          ruff check ulpf/ tests/
+
+      - name: Dependency Vulnerability Audit (pip-audit)
+        run: |
+          pip-audit --desc on
+
+      - name: Execute Full Test Suite with Coverage
+        env:
+          ULPF_DEMO_MODE: "true"
+          ULPF_SECRET_KEY: "ci-testing-secret-key-at-least-32-chars-long"
+          ULPF_ENABLE_SYSLOG_LISTENERS: "false"
+        run: |
+          python -m pytest tests/ --cov=ulpf --cov-report=xml --cov-report=term --cov-fail-under=80 -v
+
+      - name: Verify Automated Demo Smoke Tests
+        env:
+          ULPF_DEMO_MODE: "true"
+          ULPF_SECRET_KEY: "ci-testing-secret-key-at-least-32-chars-long"
+          ULPF_ENABLE_SYSLOG_LISTENERS: "false"
+        run: |
+          python -m pytest tests/test_demo_smoke.py -v

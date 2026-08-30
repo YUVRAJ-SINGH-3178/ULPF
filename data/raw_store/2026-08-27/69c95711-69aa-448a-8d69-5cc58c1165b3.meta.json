@@ -1,0 +1,20 @@
+{
+  "event_id": "69c95711-69aa-448a-8d69-5cc58c1165b3",
+  "bucket": "ulpf-raw-events",
+  "object_key": "2026-08-27/69c95711-69aa-448a-8d69-5cc58c1165b3.raw",
+  "sha256": "06beb0eabc25c8f361428c1d27eb651bf6465be1f32ed483b0600fa7c3f71b49",
+  "byte_length": 175,
+  "stored_at": "2026-08-27T16:46:12.982093+00:00",
+  "source": {
+    "vendor": "unknown",
+    "product": "unknown",
+    "detected_format": "unknown",
+    "collector_host": "ulpf-node-01",
+    "client_ip": "127.0.0.1",
+    "transport": "benchmark",
+    "facility": null,
+    "priority": null
+  },
+  "raw_file_path": "C:\\Users\\satis\\OneDrive\\Desktop\\SIH2026\\data\\raw_store\\2026-08-27\\69c95711-69aa-448a-8d69-5cc58c1165b3.raw",
+  "meta_file_path": "C:\\Users\\satis\\OneDrive\\Desktop\\SIH2026\\data\\raw_store\\2026-08-27\\69c95711-69aa-448a-8d69-5cc58c1165b3.meta.json"
+}

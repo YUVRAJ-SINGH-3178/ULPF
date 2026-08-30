@@ -1,0 +1,141 @@
+{
+  "session": {
+    "session_id": "f0ba68b2-2ede-4b73-a552-9b63fbbbd575",
+    "vendor": "ProprietaryCorp",
+    "product": "EdgeGuard",
+    "format": "proprietary",
+    "discovered_template": "<TIMESTAMP> [PROP_FW] src=<IP> dst=<IP> sport=<NUM> dport=<NUM> proto=TCP act=PERMIT",
+    "template_id": 1,
+    "raw_sample_logs": [
+      "2026-08-27 10:15:30 [PROP_FW] src=192.168.10.55 dst=10.20.30.40 sport=41234 dport=8080 proto=TCP act=PERMIT",
+      "2026-08-27 10:15:30 [PROP_FW_742df8] src=192.168.10.55 dst=10.20.30.40 sport=41234 dport=8080 proto=TCP act=PERMIT",
+      "2026-08-27 10:15:30 [PROP_FW_275031] src=192.168.10.55 dst=10.20.30.40 sport=41234 dport=8080 proto=TCP act=PERMIT"
+    ],
+    "variables": [
+      {
+        "var_index": 0,
+        "placeholder": "<TIMESTAMP>",
+        "sample_values": [
+          "2026-08-27 10:15:30"
+        ],
+        "inferred_type": "ipv4",
+        "suggested_ocsf_field": "src_endpoint.ip",
+        "confidence": 1.0
+      },
+      {
+        "var_index": 1,
+        "placeholder": "<IP>",
+        "sample_values": [
+          "192.168.10.55"
+        ],
+        "inferred_type": "ipv4",
+        "suggested_ocsf_field": "src_ip",
+        "confidence": 0.95
+      },
+      {
+        "var_index": 2,
+        "placeholder": "<IP>",
+        "sample_values": [
+          "10.20.30.40"
+        ],
+        "inferred_type": "ipv4",
+        "suggested_ocsf_field": "dst_ip",
+        "confidence": 0.95
+      },
+      {
+        "var_index": 3,
+        "placeholder": "<NUM>",
+        "sample_values": [
+          "41234"
+        ],
+        "inferred_type": "port",
+        "suggested_ocsf_field": "src_port",
+        "confidence": 0.92
+      },
+      {
+        "var_index": 4,
+        "placeholder": "<NUM>",
+        "sample_values": [
+          "8080"
+        ],
+        "inferred_type": "port",
+        "suggested_ocsf_field": "dst_port",
+        "confidence": 0.92
+      },
+      {
+        "var_index": 5,
+        "placeholder": "<proto>",
+        "sample_values": [
+          "TCP"
+        ],
+        "inferred_type": "protocol",
+        "suggested_ocsf_field": "protocol",
+        "confidence": 0.95
+      },
+      {
+        "var_index": 6,
+        "placeholder": "<act>",
+        "sample_values": [
+          "PERMIT"
+        ],
+        "inferred_type": "action",
+        "suggested_ocsf_field": "action",
+        "confidence": 0.95
+      }
+    ],
+    "target_class": "Network Activity",
+    "target_class_uid": 4001,
+    "status": "PUBLISHED",
+    "confidence_score": 0.88,
+    "created_at": "2026-08-29T17:02:31.134756+00:00",
+    "reviewed_by": "admin",
+    "reviewed_at": "2026-08-29T17:04:52.315929+00:00",
+    "published_parser_id": "edgeguard_275031",
+    "published_version": "1.0.0"
+  },
+  "compiled_regex": "(?P<timestamp_0>\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:?\\d{2})?)\\ \\[PROP_FW_275031\\]\\ src=(?P<src_1>(?:[0-9]{1,3}\\.){3}[0-9]{1,3})\\ dst=(?P<dst_2>(?:[0-9]{1,3}\\.){3}[0-9]{1,3})\\ sport=(?P<sport_3>\\d+)\\ dport=(?P<dport_4>\\d+)\\ proto=(?P<proto_5>\"[^\"]*\"|\\'[^\\']*\\'|[^\\s,;|]+)\\ act=(?P<act_6>\"[^\"]*\"|\\'[^\\']*\\'|[^\\s,;|]+)",
+  "rules": [
+    {
+      "field_name": "timestamp_0",
+      "target_ocsf_field": "src_endpoint.ip",
+      "transform": null,
+      "default_value": null
+    },
+    {
+      "field_name": "src_1",
+      "target_ocsf_field": "src_ip",
+      "transform": null,
+      "default_value": null
+    },
+    {
+      "field_name": "dst_2",
+      "target_ocsf_field": "dst_ip",
+      "transform": null,
+      "default_value": null
+    },
+    {
+      "field_name": "sport_3",
+      "target_ocsf_field": "src_port",
+      "transform": "to_int",
+      "default_value": null
+    },
+    {
+      "field_name": "dport_4",
+      "target_ocsf_field": "dst_port",
+      "transform": "to_int",
+      "default_value": null
+    },
+    {
+      "field_name": "proto_5",
+      "target_ocsf_field": "protocol",
+      "transform": "to_upper",
+      "default_value": null
+    },
+    {
+      "field_name": "act_6",
+      "target_ocsf_field": "action",
+      "transform": "to_lower",
+      "default_value": null
+    }
+  ]
+}

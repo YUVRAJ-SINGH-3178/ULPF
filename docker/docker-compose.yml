@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  ulpf-engine:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: ulpf-core-engine
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+      - "5140:5140/udp"
+      - "1514:1514"
+    volumes:
+      - ulpf_data:/app/data
+    environment:
+      - ULPF_AIR_GAPPED=1
+      - ULPF_SECRET_KEY=ulpf-ntro-sih2026-airgap-secure-key-32bytes
+      - PYTHONUNBUFFERED=1
+    networks:
+      - ulpf-airgap-net
+
+volumes:
+  ulpf_data:
+    driver: local
+
+networks:
+  ulpf-airgap-net:
+    driver: bridge
+    internal: true

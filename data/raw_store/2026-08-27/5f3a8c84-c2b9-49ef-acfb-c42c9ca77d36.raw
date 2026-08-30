@@ -1,0 +1,1 @@
+<164>Aug 27 10:15:31 fw-edge-01 %ASA-4-106023: Deny tcp src dmz:192.168.1.50/443 dst outside:203.0.113.10/51234 by access-group "OUTSIDE_BLOCK" [0x12345678, 0x0]

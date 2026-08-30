@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ULPF — Universal Log Pre-processing Framework | NTRO SIH26156</title>
+  <meta name="description" content="Universal Log Pre-processing Framework for Perimeter Network Device Logs. Lossless, OCSF-Normalized, Traceable, Extensible with Drain3, and 100% Air-Gapped.">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="brand-section">
+        <div class="brand-logo">
+          <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        </div>
+        <div class="brand-text">
+          <h1>ULPF</h1>
+          <span>NTRO · SIH26156</span>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <a class="nav-item active" data-view="overview" id="nav-overview">
+          <svg viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+          <span>Operations Center</span>
+        </a>
+        <a class="nav-item" data-view="explorer" id="nav-explorer">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <span>SIEM Event Explorer</span>
+        </a>
+        <a class="nav-item" data-view="traceability" id="nav-traceability">
+          <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <span>Lossless Traceability</span>
+        </a>
+        <a class="nav-item" data-view="onboarding" id="nav-onboarding">
+          <svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <span>Drain3 Auto-Onboard</span>
+          <span class="nav-badge" id="sidebar-onboarding-badge" style="display:none;">0</span>
+        </a>
+        <a class="nav-item" data-view="parsers" id="nav-parsers">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span>Parser Registry</span>
+        </a>
+        <a class="nav-item" data-view="errors" id="nav-errors">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+          <span>Error & Replay Queue</span>
+          <span class="nav-badge" id="sidebar-error-badge" style="display:none;">0</span>
+        </a>
+        <a class="nav-item" data-view="datalake" id="nav-datalake">
+          <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>
+          <span>Data Lake (Parquet)</span>
+        </a>
+        <a class="nav-item" data-view="benchmark" id="nav-benchmark">
+          <svg viewBox="0 0 24 24"><path d="M22 12A10 10 0 0 0 12 2v10z"/><path d="M12 2a10 10 0 1 0 10 10H12z"/></svg>
+          <span>Live Benchmarking</span>
+        </a>
+        <a class="nav-item" data-view="health" id="nav-health">
+          <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          <span>System & Air-Gap</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="airgap-badge">
+          <div class="pulse-dot"></div>
+          <div class="airgap-info">
+            <h4>AIR-GAP ACTIVE</h4>
+            <p>0 External Calls · Offline 100%</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <div class="main-wrapper">
+      <!-- Topbar Header -->
+      <header class="top-header">
+        <div class="header-title">
+          <h2>Universal Log Pre-processing Framework</h2>
+          <p>National Technical Research Organisation (NTRO) · Enterprise Telemetry Pipeline</p>
+        </div>
+        <div class="header-actions">
+          <div class="user-badge">
+            <span style="font-size: 13px; font-weight: 600;">SOC Analyst</span>
+            <span class="role-tag admin">ADMIN / REVIEWER</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Dynamic Views Container -->
+      <main class="content-area">
+
+        <!-- ================= VIEW 1: OPERATIONS CENTER ================= -->
+        <section class="view-panel active" id="view-overview">
+          <!-- Metric Counters -->
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-label">Total Ingested Events</div>
+              <div class="metric-value" id="metric-total-ingested">0</div>
+              <div class="metric-sub">✓ 100% Raw Preserved</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Throughput Rate</div>
+              <div class="metric-value" id="metric-current-eps">0.0 EPS</div>
+              <div class="metric-sub">Real-time Stream</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">OCSF Normalized</div>
+              <div class="metric-value" id="metric-normalized-count">0</div>
+              <div class="metric-sub">Schema 1.1.0 (Class 4001/2001)</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Dead-Letter Errors</div>
+              <div class="metric-value" id="metric-error-count" style="color: var(--emerald-success);">0</div>
+              <div class="metric-sub">Zero Loss Replayable</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Active Parsers</div>
+              <div class="metric-value" id="metric-active-parsers">12</div>
+              <div class="metric-sub">Versioned Registry</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">P95 Pipeline Latency</div>
+              <div class="metric-value" id="metric-p95-latency">0.45 ms</div>
+              <div class="metric-sub">Sub-millisecond Speed</div>
+            </div>
+          </div>
+
+          <!-- Ingest Sandbox & Presets -->
+          <div class="glass-card" style="margin-bottom: 24px;">
+            <div class="card-header">
+              <h3>
+                <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                Fast Ingestion Sandbox & Vendor Presets
+              </h3>
+              <span style="font-size: 12px; color: var(--text-dim);">Multi-format Perimeter Ingestion</span>
+            </div>
+
+            <div style="margin-bottom: 12px;">
+              <span class="form-label">Click a Preset Log to Test Pipeline:</span>
+              <div id="preset-buttons" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+            </div>
+
+            <div class="form-group">
+              <textarea class="form-control" id="ingest-payload-input" placeholder="Paste any raw network device log (Syslog, CEF, LEEF, JSON, or Unknown proprietary format)..." rows="3"></textarea>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 12px; color: var(--text-dim);">Listeners active on UDP :5140, TCP :1514, and REST API</span>
+              <button class="btn btn-primary" id="btn-submit-ingest">
+                <span>⚡ Ingest & Process Log</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Live Telemetry Stream -->
+          <div class="glass-card">
+            <div class="card-header">
+              <h3>
+                <svg viewBox="0 0 24 24"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
+                Live Ingestion Stream (Real-Time Pre-processing)
+              </h3>
+            </div>
+            <div class="live-stream" id="live-stream-box"></div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 2: SIEM EVENT EXPLORER ================= -->
+        <section class="view-panel" id="view-explorer">
+          <div class="glass-card">
+            <div class="card-header">
+              <h3>
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                SIEM Event Explorer & Analytics
+              </h3>
+              <button class="btn btn-secondary btn-sm" id="btn-refresh-explorer">Refresh</button>
+            </div>
+
+            <!-- Search & Filters -->
+            <div class="search-bar-wrapper">
+              <div class="search-input-group">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <input type="text" class="form-control" id="explorer-search-input" placeholder="Search full-text, IP addresses, signatures, rules...">
+              </div>
+              <select class="form-control" id="explorer-vendor-select" style="max-width: 160px;">
+                <option value="">All Vendors</option>
+                <option value="Cisco">Cisco ASA</option>
+                <option value="Palo Alto Networks">Palo Alto</option>
+                <option value="Fortinet">Fortinet</option>
+                <option value="Suricata">Suricata</option>
+                <option value="Zeek">Zeek</option>
+                <option value="Squid">Squid</option>
+                <option value="Checkpoint">Checkpoint</option>
+              </select>
+              <select class="form-control" id="explorer-severity-select" style="max-width: 140px;">
+                <option value="">All Severities</option>
+                <option value="1">1 - Info</option>
+                <option value="2">2 - Low</option>
+                <option value="3">3 - Medium</option>
+                <option value="4">4 - High</option>
+                <option value="5">5 - Critical</option>
+              </select>
+              <select class="form-control" id="explorer-disposition-select" style="max-width: 140px;">
+                <option value="">All Actions</option>
+                <option value="Allowed">Allowed</option>
+                <option value="Blocked">Blocked</option>
+              </select>
+            </div>
+
+            <!-- Table -->
+            <div class="table-responsive">
+              <table class="cyber-table">
+                <thead>
+                  <tr>
+                    <th>Event ID</th>
+                    <th>Time</th>
+                    <th>Vendor / Format</th>
+                    <th>Severity</th>
+                    <th>Disposition</th>
+                    <th>Source → Destination</th>
+                    <th>Parser Used</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="events-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 3: LOSSLESS TRACEABILITY ================= -->
+        <section class="view-panel" id="view-traceability">
+          <div class="glass-card">
+            <div class="card-header">
+              <h3>
+                <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                Lossless Forensic Traceability & Cryptographic Proof
+              </h3>
+              <div style="display: flex; gap: 10px;">
+                <button class="btn btn-danger btn-sm" onclick="triggerTamperTest()">⚠ Simulate Tamper Test</button>
+                <button class="btn btn-success btn-sm" onclick="verifyCurrentEventIntegrity()">✓ Verify Cryptographic SHA-256</button>
+              </div>
+            </div>
+
+            <!-- Hash Integrity Banner -->
+            <div class="hash-display">
+              <div>
+                <span style="color: var(--text-dim);">EVENT ID: </span>
+                <span id="trace-event-id" style="font-weight:700; color: #FFFFFF;">--</span>
+                <br>
+                <span style="color: var(--text-dim);">STORED SHA-256 HASH: </span>
+                <span class="hash-code" id="trace-stored-hash">--</span>
+              </div>
+              <div>
+                <span class="badge badge-info" id="trace-verify-status-badge">READY TO VERIFY</span>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 20px; font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+              <span><strong>Byte Length:</strong> <span id="trace-byte-length">--</span></span>
+              <span><strong>Ingest Timestamp:</strong> <span id="trace-ingest-time">--</span></span>
+              <span><strong>Parser Version:</strong> <span id="trace-parser-used">--</span></span>
+            </div>
+
+            <!-- Split-Screen View: Normalized OCSF vs Raw -->
+            <div class="trace-split-view">
+              <div>
+                <h4 style="font-size: 13px; color: var(--cyan-core); margin-bottom: 8px;">1. Standardized OCSF 1.1.0 Event</h4>
+                <div class="code-box" id="trace-ocsf-box">// Select an event to inspect OCSF JSON representation</div>
+              </div>
+              <div>
+                <h4 style="font-size: 13px; color: var(--neon-purple); margin-bottom: 8px;">2. Exact Immutable Raw Disk Payload</h4>
+                <div class="code-box" id="trace-raw-box">// Unmutated raw bytes from write-once storage</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 4: DRAIN3 AUTO-ONBOARDING STUDIO ================= -->
+        <section class="view-panel" id="view-onboarding">
+          <div class="glass-card" style="margin-bottom: 24px;">
+            <div class="card-header">
+              <h3>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                Drain3 Online Template Miner & Zero-Code Onboarding
+              </h3>
+              <span class="badge badge-info">AI/Heuristic Online Clustering</span>
+            </div>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 16px;">
+              When previously unseen or proprietary network device logs arrive, Drain3 fixed-depth prefix trees dynamically cluster messages, isolate constants from variables (<span class="template-var">&lt;IP&gt;</span>, <span class="template-var">&lt;NUM&gt;</span>, <span class="template-var">&lt;STR&gt;</span>), infer data types, and suggest OCSF 1.1.0 mappings for one-click human review.
+            </p>
+
+            <div id="onboarding-sessions-list"></div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 5: PARSER REGISTRY ================= -->
+        <section class="view-panel" id="view-parsers">
+          <div class="glass-card">
+            <div class="card-header">
+              <h3>
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Modular Parser Registry & Version Catalog
+              </h3>
+            </div>
+            <div class="table-responsive">
+              <table class="cyber-table">
+                <thead>
+                  <tr>
+                    <th>Parser ID</th>
+                    <th>Vendor</th>
+                    <th>Product</th>
+                    <th>Format</th>
+                    <th>Version</th>
+                    <th>Target Class</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="parsers-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 6: ERROR & REPLAY QUEUE ================= -->
+        <section class="view-panel" id="view-errors">
+          <div class="glass-card">
+            <div class="card-header">
+              <h3>
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                Dead-Letter & Error Replay Queue
+              </h3>
+              <button class="btn btn-primary btn-sm" onclick="replayAllErrors()">⚡ Bulk Replay All Unresolved</button>
+            </div>
+            <p style="font-size: 13px; color: var(--text-dim); margin-bottom: 16px;">
+              Raw events are never silently dropped. Failed or unparsed logs are preserved with exact error traces and can be re-executed after onboarding a new parser version.
+            </p>
+            <div class="table-responsive">
+              <table class="cyber-table">
+                <thead>
+                  <tr>
+                    <th>Error ID</th>
+                    <th>Stage</th>
+                    <th>Raw Payload Sample</th>
+                    <th>Error Reason</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="errors-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 7: DATA LAKE ================= -->
+        <section class="view-panel" id="view-datalake">
+          <div class="glass-card">
+            <div class="card-header">
+              <h3>
+                <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>
+                Data Lake & Apache Parquet Sinks
+              </h3>
+              <button class="btn btn-secondary btn-sm" onclick="flushDataLakeBuffer()">Flush Buffer to Parquet</button>
+            </div>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+              Normalized OCSF events are automatically batched into partitioned columnar Apache Parquet files with Snappy compression, directly consumable by downstream AI/ML models (e.g. CIC-IDS2017 / UNSW-NB15 analytics).
+            </p>
+            <div class="table-responsive">
+              <table class="cyber-table">
+                <thead>
+                  <tr>
+                    <th>Filename</th>
+                    <th>Storage Path</th>
+                    <th>File Size</th>
+                    <th>Last Modified</th>
+                  </tr>
+                </thead>
+                <tbody id="datalake-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 8: BENCHMARKING ================= -->
+        <section class="view-panel" id="view-benchmark">
+          <div class="glass-card" style="margin-bottom: 24px;">
+            <div class="card-header">
+              <h3>
+                <svg viewBox="0 0 24 24"><path d="M22 12A10 10 0 0 0 12 2v10z"/><path d="M12 2a10 10 0 1 0 10 10H12z"/></svg>
+                Hardware Performance & Load Testing Runner
+              </h3>
+            </div>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+              Empirical load generator that measures actual hardware throughput, p50/p95/p99 latencies, CPU and memory footprint across mixed enterprise log streams without synthetic inflation.
+            </p>
+
+            <div style="display: flex; gap: 16px; align-items: flex-end; margin-bottom: 20px;">
+              <div class="form-group" style="margin-bottom: 0; min-width: 200px;">
+                <label class="form-label">Workload Event Count:</label>
+                <select class="form-control" id="benchmark-count-select">
+                  <option value="1000">1,000 Events (Fast Check)</option>
+                  <option value="5000" selected>5,000 Events (Standard)</option>
+                  <option value="10000">10,000 Events (Stress Test)</option>
+                  <option value="25000">25,000 Events (High Load)</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" id="btn-start-benchmark">
+                <span>⚡ Start Performance Benchmark</span>
+              </button>
+            </div>
+
+            <!-- Benchmark Results Gauges -->
+            <div class="benchmark-gauges">
+              <div class="gauge-card">
+                <div class="metric-label">Measured Throughput</div>
+                <div class="gauge-val" id="bench-res-eps">-- EPS</div>
+                <div style="font-size: 11px; color: var(--text-dim);">Single Node Multi-threaded</div>
+              </div>
+              <div class="gauge-card">
+                <div class="metric-label">P95 Latency</div>
+                <div class="gauge-val" id="bench-res-p95" style="color: var(--emerald-success);">-- ms</div>
+                <div style="font-size: 11px; color: var(--text-dim);">End-to-End Normalization</div>
+              </div>
+              <div class="gauge-card">
+                <div class="metric-label">CPU Utilization</div>
+                <div class="gauge-val" id="bench-res-cpu" style="color: var(--neon-purple);">-- %</div>
+                <div style="font-size: 11px; color: var(--text-dim);">Process Utilization</div>
+              </div>
+              <div class="gauge-card">
+                <div class="metric-label">Single Node Capacity</div>
+                <div class="gauge-val" id="bench-res-daily" style="font-size: 20px; color: #FFFFFF;">--</div>
+                <div style="font-size: 11px; color: var(--text-dim);">Extrapolated Daily Volume</div>
+              </div>
+            </div>
+
+            <pre class="code-box" id="benchmark-results-box" style="display:none;"></pre>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 9: SYSTEM & AIR-GAP ================= -->
+        <section class="view-panel" id="view-health">
+          <div class="glass-card">
+            <div class="card-header">
+              <h3>
+                <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                System Architecture Health & Air-Gap Compliance Matrix
+              </h3>
+            </div>
+            
+            <div class="metrics-grid" style="margin-bottom: 20px;">
+              <div class="metric-card">
+                <div class="metric-label">Air-Gap Status</div>
+                <div class="metric-value" style="font-size: 18px; color: var(--emerald-success);" id="health-airgap-status">100% COMPLIANT</div>
+                <div class="metric-sub">0 Outbound Socket Calls</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Memory Footprint</div>
+                <div class="metric-value" id="health-ram-mb">-- MB</div>
+                <div class="metric-sub">RSS Process Memory</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">CPU Load</div>
+                <div class="metric-value" id="health-cpu-pct">-- %</div>
+                <div class="metric-sub">Local Engine Load</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Raw Storage Volume</div>
+                <div class="metric-value" id="health-raw-storage-size">-- KB</div>
+                <div class="metric-sub">Write-Once Immutable Store</div>
+              </div>
+            </div>
+
+            <h4 style="font-size: 14px; margin-bottom: 12px; color: var(--cyan-core);">Subsystem Verification Matrix</h4>
+            <div class="table-responsive">
+              <table class="cyber-table">
+                <thead>
+                  <tr>
+                    <th>Component Subsystem</th>
+                    <th>Implementation Type</th>
+                    <th>Air-Gap Guarantee</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Immutable Raw Storage</strong></td>
+                    <td>Write-Once Disk Blob + SHA-256 Envelope</td>
+                    <td>100% Local / Zero Cloud</td>
+                    <td><span class="badge badge-low">ONLINE</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Format Detection Engine</strong></td>
+                    <td>Deterministic Signature & Header Parser</td>
+                    <td>100% Offline</td>
+                    <td><span class="badge badge-low">ONLINE</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Drain3 Template Miner</strong></td>
+                    <td>Streaming Fixed-Depth Prefix Tree</td>
+                    <td>Embedded Engine / Zero SaaS</td>
+                    <td><span class="badge badge-low">ONLINE</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>OCSF Normalizer</strong></td>
+                    <td>OCSF 1.1.0 Class 4001 / 2001 Standard</td>
+                    <td>Compiled Schemas</td>
+                    <td><span class="badge badge-low">ONLINE</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Enrichment Engine</strong></td>
+                    <td>Offline Asset Inventory & Offline GeoIP</td>
+                    <td>No External DNS/API Calls</td>
+                    <td><span class="badge badge-low">ONLINE</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>SIEM Search Index</strong></td>
+                    <td>SQLite FTS5 + DuckDB Analytical Storage</td>
+                    <td>Self-Contained Embedded</td>
+                    <td><span class="badge badge-low">ONLINE</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Data Lake Sink</strong></td>
+                    <td>Apache Parquet Columnar Storage (Snappy)</td>
+                    <td>Local Partitioned Files</td>
+                    <td><span class="badge badge-low">ONLINE</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Onboarding Human Review Studio Modal -->
+  <div class="modal-overlay" id="onboarding-modal">
+    <div class="modal-content">
+      <div class="card-header">
+        <h3>⚡ Drain3 Onboarding Review Studio: <span id="modal-onb-vendor" style="color: var(--cyan-core);">Appliance</span></h3>
+        <button class="btn btn-secondary btn-sm" onclick="closeModal('onboarding-modal')">✕ Close</button>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <span class="form-label">Discovered Message Template:</span>
+        <div class="template-box" id="modal-onb-template">--</div>
+      </div>
+
+      <h4 style="font-size: 13px; color: var(--cyan-core); margin-bottom: 10px;">Candidate Extracted Variables & OCSF 1.1.0 Mappings</h4>
+      <div class="table-responsive" style="margin-bottom: 20px;">
+        <table class="cyber-table">
+          <thead>
+            <tr>
+              <th>Variable</th>
+              <th>Sample Value</th>
+              <th>Inferred Type</th>
+              <th>Target OCSF Field</th>
+              <th>Confidence</th>
+            </tr>
+          </thead>
+          <tbody id="modal-onb-vars-body"></tbody>
+        </table>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 12px;">
+        <button class="btn btn-secondary" onclick="closeModal('onboarding-modal')">Cancel</button>
+        <button class="btn btn-primary" id="btn-approve-onboarding" onclick="approveAndPublishCurrentSession()">
+          ✓ Approve & Publish Active Parser
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
