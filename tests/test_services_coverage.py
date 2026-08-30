@@ -22,7 +22,9 @@ from ulpf.services.storage.search_index import SearchIndex
 def test_envelope_factory():
     factory = EnvelopeFactory()
     raw = "<166>Aug 27 10:15:30 fw-01 %ASA-6-302013: Connection built"
-    env = factory.create_envelope(raw_payload=raw, transport="udp", client_ip="192.168.1.50")
+    env = factory.create_envelope(
+        raw_payload=raw, transport="udp", client_ip="192.168.1.50"
+    )
 
     assert env.event_id is not None
     assert env.raw.raw_payload == raw
@@ -36,7 +38,7 @@ def test_envelope_factory():
 
 def test_offline_enrichment():
     enricher = OfflineEnricher()
-    
+
     # Internal IP enrichment
     doc1 = {"src_endpoint": {"ip": "10.0.1.50"}}
     enricher.enrich(doc1)
@@ -61,14 +63,10 @@ def test_dead_letter_error_queue(tmp_path):
 
     # Add errors
     err1_id = queue.record_failure(
-        envelope=env1,
-        error_stage="FORMAT_DETECTION",
-        errors=["Unknown format"]
+        envelope=env1, error_stage="FORMAT_DETECTION", errors=["Unknown format"]
     )
     err2_id = queue.record_failure(
-        envelope=env2,
-        error_stage="PARSING",
-        errors=["Field mismatch"]
+        envelope=env2, error_stage="PARSING", errors=["Field mismatch"]
     )
 
     assert err1_id is not None
@@ -101,9 +99,23 @@ def test_search_index_faceted_queries(tmp_path):
 
         envelope = EventEnvelope(
             event_id=f"evt-{i:03d}",
-            raw={"raw_payload": raw, "sha256": f"hash{i}", "byte_length": len(raw), "bucket": "local", "object_key": f"key{i}"},
-            source={"transport": "test", "client_ip": src_ip, "vendor": vendor, "product": product},
-            parsing={"parser_id": "cisco_asa" if i < 5 else "panos", "status": "SUCCESS"},
+            raw={
+                "raw_payload": raw,
+                "sha256": f"hash{i}",
+                "byte_length": len(raw),
+                "bucket": "local",
+                "object_key": f"key{i}",
+            },
+            source={
+                "transport": "test",
+                "client_ip": src_ip,
+                "vendor": vendor,
+                "product": product,
+            },
+            parsing={
+                "parser_id": "cisco_asa" if i < 5 else "panos",
+                "status": "SUCCESS",
+            },
             ocsf={
                 "activity_name": "Network Traffic",
                 "category_name": "Network Activity",
@@ -115,8 +127,14 @@ def test_search_index_faceted_queries(tmp_path):
                 "disposition_id": disp_id,
                 "src_endpoint": {"ip": src_ip, "port": 1234},
                 "dst_endpoint": {"ip": dst_ip, "port": 80},
-                "metadata": {"product": {"vendor_name": vendor, "name": product, "version": "1.0"}}
-            }
+                "metadata": {
+                    "product": {
+                        "vendor_name": vendor,
+                        "name": product,
+                        "version": "1.0",
+                    }
+                },
+            },
         )
         idx.index_event(envelope)
 
@@ -152,7 +170,10 @@ def test_file_batch_ingestor(tmp_path):
     log_dir = tmp_path / "test_logs"
     log_dir.mkdir()
     log_file = log_dir / "firewall.log"
-    log_file.write_text("line 1: log telemetry\nline 2: log telemetry\nline 3: log telemetry\n", encoding="utf-8")
+    log_file.write_text(
+        "line 1: log telemetry\nline 2: log telemetry\nline 3: log telemetry\n",
+        encoding="utf-8",
+    )
 
     ingested_envs = []
     ingestor = FileBatchIngestor(callback=lambda e: ingested_envs.append(e))
@@ -168,7 +189,7 @@ def test_field_discovery_engine():
     tmpl = "2026-08-27 fw-01 src=<IP_1> dst=<IP_2> dport=<NUM_1> action=<STR_1>"
     samples = [
         "2026-08-27 fw-01 src=192.168.1.100 dst=10.0.0.1 dport=443 action=ALLOW",
-        "2026-08-27 fw-01 src=192.168.1.105 dst=10.0.0.5 dport=80 action=DENY"
+        "2026-08-27 fw-01 src=192.168.1.105 dst=10.0.0.5 dport=80 action=DENY",
     ]
     variables, pattern, rules = engine.analyze_template_and_samples(tmpl, samples)
 

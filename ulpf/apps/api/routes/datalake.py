@@ -22,7 +22,9 @@ def list_parquet_files(user: dict[str, Any] = Depends(get_current_user)):
 
 
 @router.post("/flush", response_model=dict[str, Any])
-def flush_data_lake_buffer(user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR]))):
+def flush_data_lake_buffer(
+    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR])),
+):
     """Flushes currently buffered in-memory events to a new Parquet file on disk."""
     orch = get_orchestrator()
     path = orch.flush_data_lake()

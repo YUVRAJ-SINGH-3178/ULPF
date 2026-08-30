@@ -20,7 +20,7 @@ class CiscoASAParser(BaseParser):
         parser_id: str = "cisco-asa-firewall-parser",
         vendor: str = "Cisco",
         product: str = "ASA",
-        version: str = "1.0.0"
+        version: str = "1.0.0",
     ):
         super().__init__(
             parser_id=parser_id,
@@ -29,19 +29,23 @@ class CiscoASAParser(BaseParser):
             format_type=FormatType.SYSLOG_RFC3164,
             version=version,
             target_class="Network Activity",
-            target_class_uid=4001
+            target_class_uid=4001,
         )
 
-    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
+    def matches(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> bool:
         return bool(re.search(r"%ASA-\d+-\d+|%FTD-\d+-\d+", raw_payload))
 
-    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
+    def parse_fields(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> dict[str, Any]:
         raw = raw_payload.strip()
 
         parsed: dict[str, Any] = {
             "device_vendor": "Cisco",
             "device_product": "ASA",
-            "message": raw
+            "message": raw,
         }
 
         # Extract message code e.g. %ASA-6-302013
@@ -80,7 +84,7 @@ class CiscoASAParser(BaseParser):
         built_match = re.search(
             r"Built\s+(inbound|outbound)?\s*(\w+)\s+connection\s+(\d+)\s+for\s+(?:([\w-]+):)?([0-9.]+)/(\d+)(?:\s*\([^\)]+\))?\s+to\s+(?:([\w-]+):)?([0-9.]+)/(\d+)",
             body,
-            re.IGNORECASE
+            re.IGNORECASE,
         )
         if built_match:
             direction_str = (built_match.group(1) or "inbound").lower()
@@ -102,7 +106,7 @@ class CiscoASAParser(BaseParser):
         teardown_match = re.search(
             r"Teardown\s+(?:(inbound|outbound)\s+)?(\w+)\s+connection\s+(\d+)\s+for\s+(?:([\w-]+):)?([0-9.]+)/(\d+)(?:\s*\([^\)]+\))?\s+to\s+(?:([\w-]+):)?([0-9.]+)/(\d+)(?:\s*\([^\)]+\))?\s+duration\s+([0-9:]+)\s+bytes\s+(\d+)",
             body,
-            re.IGNORECASE
+            re.IGNORECASE,
         )
         if teardown_match:
             parsed["direction"] = (teardown_match.group(1) or "inbound").lower()
@@ -125,7 +129,7 @@ class CiscoASAParser(BaseParser):
         deny_match = re.search(
             r"Deny\s+(\w+)\s+src\s+(?:([\w-]+):)?([0-9.]+)/(\d+)\s+dst\s+(?:([\w-]+):)?([0-9.]+)/(\d+)(?:\s+by\s+access-group\s+\"([^\"]+)\")?",
             body,
-            re.IGNORECASE
+            re.IGNORECASE,
         )
         if deny_match:
             parsed["protocol"] = deny_match.group(1).upper()
@@ -147,7 +151,7 @@ class CiscoASAParser(BaseParser):
         denied_gen = re.search(
             r"(?:(Inbound|Outbound)\s+)?(\w+)?\s*connection\s+denied\s+from\s+([0-9.]+)/(\d+)\s+to\s+([0-9.]+)/(\d+)(?:\s+flags\s+(\w+))?(?:\s+on\s+interface\s+([\w-]+))?",
             body,
-            re.IGNORECASE
+            re.IGNORECASE,
         )
         if denied_gen:
             parsed["direction"] = (denied_gen.group(1) or "inbound").lower()
@@ -171,7 +175,7 @@ class CiscoASAParser(BaseParser):
         nat_match = re.search(
             r"Built\s+(?:dynamic|static)\s+(\w+)\s+translation\s+from\s+(?:([\w-]+):)?([0-9.]+)/(\d+)\s+to\s+(?:([\w-]+):)?([0-9.]+)/(\d+)",
             body,
-            re.IGNORECASE
+            re.IGNORECASE,
         )
         if nat_match:
             parsed["protocol"] = nat_match.group(1).upper()
@@ -200,7 +204,9 @@ class CiscoASAParser(BaseParser):
         elif len(unique_ips) == 1:
             parsed["src_ip"] = unique_ips[0]
 
-        parsed["action"] = "deny" if "denied" in body.lower() or "deny" in body.lower() else "allow"
+        parsed["action"] = (
+            "deny" if "denied" in body.lower() or "deny" in body.lower() else "allow"
+        )
         parsed["disposition"] = "Blocked" if parsed["action"] == "deny" else "Allowed"
         parsed["disposition_id"] = 2 if parsed["action"] == "deny" else 1
 

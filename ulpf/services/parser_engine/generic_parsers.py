@@ -22,7 +22,7 @@ class GenericRFC5424Parser(BaseParser):
         parser_id: str = "syslog-rfc5424-generic",
         vendor: str = "Generic",
         product: str = "Syslog-RFC5424",
-        version: str = "1.0.0"
+        version: str = "1.0.0",
     ):
         super().__init__(
             parser_id=parser_id,
@@ -31,14 +31,21 @@ class GenericRFC5424Parser(BaseParser):
             format_type=FormatType.SYSLOG_RFC5424,
             version=version,
             target_class="Network Activity",
-            target_class_uid=4001
+            target_class_uid=4001,
         )
-        self.pattern = re.compile(r"^<(\d{1,3})>1\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)?\s*(.*)$", re.DOTALL)
+        self.pattern = re.compile(
+            r"^<(\d{1,3})>1\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)?\s*(.*)$",
+            re.DOTALL,
+        )
 
-    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
+    def matches(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> bool:
         return bool(self.pattern.match(raw_payload.strip()))
 
-    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
+    def parse_fields(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> dict[str, Any]:
         raw = raw_payload.strip()
         m = self.pattern.match(raw)
         if not m:
@@ -65,7 +72,7 @@ class GenericRFC5424Parser(BaseParser):
             4: (3, "Medium"),
             5: (2, "Low"),
             6: (1, "Informational"),
-            7: (1, "Informational")
+            7: (1, "Informational"),
         }
         sev_id, sev_name = sev_map.get(severity_code, (1, "Informational"))
 
@@ -85,7 +92,7 @@ class GenericRFC5424Parser(BaseParser):
             "message": msg.strip() if msg else f"Syslog {app_name} event",
             "action": "allow",
             "disposition": "Allowed",
-            "disposition_id": 1
+            "disposition_id": 1,
         }
 
         # Heuristic IP extraction from message body
@@ -114,7 +121,7 @@ class GenericRFC3164Parser(BaseParser):
         parser_id: str = "syslog-rfc3164-generic",
         vendor: str = "Generic",
         product: str = "Syslog-RFC3164",
-        version: str = "1.0.0"
+        version: str = "1.0.0",
     ):
         super().__init__(
             parser_id=parser_id,
@@ -123,14 +130,21 @@ class GenericRFC3164Parser(BaseParser):
             format_type=FormatType.SYSLOG_RFC3164,
             version=version,
             target_class="Network Activity",
-            target_class_uid=4001
+            target_class_uid=4001,
         )
-        self.pattern = re.compile(r"^<(\d{1,3})>([A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+([^\s:]+)\s+([^:]+):\s*(.*)$", re.DOTALL)
+        self.pattern = re.compile(
+            r"^<(\d{1,3})>([A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+([^\s:]+)\s+([^:]+):\s*(.*)$",
+            re.DOTALL,
+        )
 
-    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
+    def matches(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> bool:
         return bool(self.pattern.match(raw_payload.strip()))
 
-    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
+    def parse_fields(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> dict[str, Any]:
         raw = raw_payload.strip()
         m = self.pattern.match(raw)
         if not m:
@@ -150,19 +164,26 @@ class GenericRFC3164Parser(BaseParser):
             "device_product": tag,
             "facility": facility,
             "severity_code": severity_code,
-            "severity": "Informational" if severity_code >= 6 else ("Warning" if severity_code >= 4 else "High"),
-            "severity_id": 1 if severity_code >= 6 else (3 if severity_code >= 4 else 4),
+            "severity": "Informational"
+            if severity_code >= 6
+            else ("Warning" if severity_code >= 4 else "High"),
+            "severity_id": 1
+            if severity_code >= 6
+            else (3 if severity_code >= 4 else 4),
             "timestamp": ts,
             "src_hostname": host,
             "app_name": tag,
             "message": msg.strip(),
             "action": "allow",
             "disposition": "Allowed",
-            "disposition_id": 1
+            "disposition_id": 1,
         }
 
         # Check for deny / drop keywords in message
-        if any(w in msg.lower() for w in ["deny", "denied", "drop", "dropped", "block", "blocked", "reject"]):
+        if any(
+            w in msg.lower()
+            for w in ["deny", "denied", "drop", "dropped", "block", "blocked", "reject"]
+        ):
             parsed["action"] = "deny"
             parsed["disposition"] = "Blocked"
             parsed["disposition_id"] = 2
@@ -189,7 +210,7 @@ class GenericJSONParser(BaseParser):
         parser_id: str = "json-generic-parser",
         vendor: str = "Generic",
         product: str = "JSON-Log",
-        version: str = "1.0.0"
+        version: str = "1.0.0",
     ):
         super().__init__(
             parser_id=parser_id,
@@ -198,14 +219,18 @@ class GenericJSONParser(BaseParser):
             format_type=FormatType.JSON,
             version=version,
             target_class="Network Activity",
-            target_class_uid=4001
+            target_class_uid=4001,
         )
 
-    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
+    def matches(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> bool:
         raw = raw_payload.strip()
-        return (raw.startswith("{") and raw.endswith("}"))
+        return raw.startswith("{") and raw.endswith("}")
 
-    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
+    def parse_fields(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> dict[str, Any]:
         data = json.loads(raw_payload.strip())
         if not isinstance(data, dict):
             raise ValueError("Generic JSON payload must be an object")
@@ -220,7 +245,15 @@ class GenericJSONParser(BaseParser):
             if src_k in data:
                 parsed["src_ip"] = data[src_k]
                 break
-        for dst_k in ["dst_ip", "dst", "dest_ip", "destination_ip", "server_ip", "dstip", "ip_dst"]:
+        for dst_k in [
+            "dst_ip",
+            "dst",
+            "dest_ip",
+            "destination_ip",
+            "server_ip",
+            "dstip",
+            "ip_dst",
+        ]:
             if dst_k in data:
                 parsed["dst_ip"] = data[dst_k]
                 break
@@ -231,7 +264,14 @@ class GenericJSONParser(BaseParser):
                 except (ValueError, TypeError):
                     pass
                 break
-        for dpt_k in ["dst_port", "dpt", "dest_port", "destination_port", "server_port", "dstport"]:
+        for dpt_k in [
+            "dst_port",
+            "dpt",
+            "dest_port",
+            "destination_port",
+            "server_port",
+            "dstport",
+        ]:
             if dpt_k in data:
                 try:
                     parsed["dst_port"] = int(data[dpt_k])

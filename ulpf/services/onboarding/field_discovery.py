@@ -16,13 +16,22 @@ class FieldDiscoveryEngine:
 
     IP_REGEX = re.compile(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$")
     ISO_DATE_REGEX = re.compile(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}")
-    PROTO_NAMES = {"TCP", "UDP", "ICMP", "GRE", "ESP", "AH", "HTTP", "HTTPS", "DNS", "SSH"}
+    PROTO_NAMES = {
+        "TCP",
+        "UDP",
+        "ICMP",
+        "GRE",
+        "ESP",
+        "AH",
+        "HTTP",
+        "HTTPS",
+        "DNS",
+        "SSH",
+    }
     ACTIONS = {"ALLOW", "DENY", "DROP", "BLOCK", "REJECT", "ACCEPT", "PERMIT", "PASS"}
 
     def analyze_template_and_samples(
-        self,
-        template_str: str,
-        sample_logs: list[str]
+        self, template_str: str, sample_logs: list[str]
     ) -> tuple[list[TemplateVariable], str, list[ParserRule]]:
         """
         1. Identifies variable placeholders in template.
@@ -31,7 +40,9 @@ class FieldDiscoveryEngine:
         4. Infers data types and suggests OCSF target fields.
         5. Generates ParserRule definitions.
         """
-        regex_pattern, var_names, var_placeholders = self._template_to_regex(template_str, sample_logs)
+        regex_pattern, var_names, var_placeholders = self._template_to_regex(
+            template_str, sample_logs
+        )
 
         compiled_re = None
         try:
@@ -60,8 +71,10 @@ class FieldDiscoveryEngine:
         for idx, v_name in enumerate(var_names):
             placeholder = var_placeholders[idx]
             vals = samples_by_var.get(v_name, [])
-            inferred_type, ocsf_field, confidence, transform = self._infer_field_mapping(
-                v_name, placeholder, vals, ip_count, port_count
+            inferred_type, ocsf_field, confidence, transform = (
+                self._infer_field_mapping(
+                    v_name, placeholder, vals, ip_count, port_count
+                )
             )
 
             if inferred_type == "ipv4":
@@ -69,28 +82,33 @@ class FieldDiscoveryEngine:
             elif inferred_type == "port":
                 port_count += 1
 
-            variables.append(TemplateVariable(
-                var_index=idx,
-                placeholder=placeholder,
-                sample_values=vals[:5] if vals else [placeholder],
-                inferred_type=inferred_type,
-                suggested_ocsf_field=ocsf_field,
-                confidence=confidence
-            ))
+            variables.append(
+                TemplateVariable(
+                    var_index=idx,
+                    placeholder=placeholder,
+                    sample_values=vals[:5] if vals else [placeholder],
+                    inferred_type=inferred_type,
+                    suggested_ocsf_field=ocsf_field,
+                    confidence=confidence,
+                )
+            )
 
-            rules.append(ParserRule(
-                field_name=v_name,
-                target_ocsf_field=ocsf_field,
-                transform=transform
-            ))
+            rules.append(
+                ParserRule(
+                    field_name=v_name, target_ocsf_field=ocsf_field, transform=transform
+                )
+            )
 
         return variables, regex_pattern, rules
 
-    def _template_to_regex(self, template_str: str, sample_logs: list[str] | None = None) -> tuple[str, list[str], list[str]]:
+    def _template_to_regex(
+        self, template_str: str, sample_logs: list[str] | None = None
+    ) -> tuple[str, list[str], list[str]]:
         """
         Converts Drain3 template into regex pattern with named groups (?P<var_0>...)
         Generalizes key=value tokens into value capture groups.
         """
+
         # Step 1: Pre-process template: if there are KEY=VALUE tokens that aren't masked, generalize value
         def _generalize_kv(m):
             key, val = m.group(1), m.group(2)
@@ -98,7 +116,9 @@ class FieldDiscoveryEngine:
                 return m.group(0)
             return f"{key}=<{key}>"
 
-        working_tmpl = re.sub(r'([A-Za-z0-9_]+)=([^\s,;|]+)', _generalize_kv, template_str)
+        working_tmpl = re.sub(
+            r"([A-Za-z0-9_]+)=([^\s,;|]+)", _generalize_kv, template_str
+        )
 
         token_pattern = re.compile(r"<([^>]+)>")
         parts = []
@@ -108,7 +128,7 @@ class FieldDiscoveryEngine:
         var_idx = 0
 
         for m in token_pattern.finditer(working_tmpl):
-            literal_prefix = working_tmpl[last_end:m.start()]
+            literal_prefix = working_tmpl[last_end : m.start()]
             parts.append(re.escape(literal_prefix))
 
             token_type = m.group(1)
@@ -116,11 +136,22 @@ class FieldDiscoveryEngine:
             var_name = f"var_{var_idx}"
 
             # If previous literal ended with key= or key:
-            key_match = re.search(r'([a-zA-Z0-9_]+)[=:]\s*$', literal_prefix)
+            key_match = re.search(r"([a-zA-Z0-9_]+)[=:]\s*$", literal_prefix)
             if key_match:
                 key_label = key_match.group(1).lower()
                 var_name = f"{key_label}_{var_idx}"
-            elif token_type.lower() in ["ip", "num", "timestamp", "str", "uuid", "rule", "proto", "action", "bytes", "dev"]:
+            elif token_type.lower() in [
+                "ip",
+                "num",
+                "timestamp",
+                "str",
+                "uuid",
+                "rule",
+                "proto",
+                "action",
+                "bytes",
+                "dev",
+            ]:
                 var_name = f"{token_type.lower()}_{var_idx}"
 
             var_names.append(var_name)
@@ -128,11 +159,19 @@ class FieldDiscoveryEngine:
 
             if token_type.upper() == "IP" or "ip" in var_name:
                 group_regex = rf"(?P<{var_name}>(?:[0-9]{{1,3}}\.){{3}}[0-9]{{1,3}})"
-            elif token_type.upper() == "NUM" or "port" in var_name or "bytes" in var_name:
+            elif (
+                token_type.upper() == "NUM" or "port" in var_name or "bytes" in var_name
+            ):
                 group_regex = rf"(?P<{var_name}>\d+)"
-            elif token_type.upper() == "TIMESTAMP" or "time" in var_name or "date" in var_name:
+            elif (
+                token_type.upper() == "TIMESTAMP"
+                or "time" in var_name
+                or "date" in var_name
+            ):
                 group_regex = rf"(?P<{var_name}>\d{{4}}-\d{{2}}-\d{{2}}[T ]\d{{2}}:\d{{2}}:\d{{2}}(?:\.\d+)?(?:Z|[+-]\d{{2}}:?\d{{2}})?)"
-            elif token_type.upper() == "STR" or "reason" in var_name or "msg" in var_name:
+            elif (
+                token_type.upper() == "STR" or "reason" in var_name or "msg" in var_name
+            ):
                 group_regex = rf'(?P<{var_name}>"[^"]*"|\'[^\']*\'|[^\s,;|]+)'
             elif token_type.upper() == "UUID":
                 group_regex = rf"(?P<{var_name}>[0-9a-fA-F-]{{36}})"
@@ -153,7 +192,7 @@ class FieldDiscoveryEngine:
         placeholder: str,
         samples: list[str],
         ip_count: int,
-        port_count: int
+        port_count: int,
     ) -> tuple[str, str, float, str | None]:
         """
         Determines type, suggested OCSF field, confidence score, and transform function.
@@ -162,7 +201,12 @@ class FieldDiscoveryEngine:
         first_sample = samples[0].strip().strip('"').strip("'") if samples else ""
 
         # Check IP Address
-        if placeholder == "<IP>" or "ip" in name_lower or "src" in name_lower or "dst" in name_lower:
+        if (
+            placeholder == "<IP>"
+            or "ip" in name_lower
+            or "src" in name_lower
+            or "dst" in name_lower
+        ):
             if self.IP_REGEX.match(first_sample) or placeholder == "<IP>":
                 if "src" in name_lower or ip_count == 0:
                     return "ipv4", "src_ip", 0.95, None
@@ -170,7 +214,17 @@ class FieldDiscoveryEngine:
                     return "ipv4", "dst_ip", 0.95, None
 
         # Check Port
-        if "port" in name_lower or "spt" in name_lower or "dpt" in name_lower or (placeholder == "<NUM>" and first_sample.isdigit() and 1 <= int(first_sample) <= 65535 and ("src" in name_lower or "dst" in name_lower)):
+        if (
+            "port" in name_lower
+            or "spt" in name_lower
+            or "dpt" in name_lower
+            or (
+                placeholder == "<NUM>"
+                and first_sample.isdigit()
+                and 1 <= int(first_sample) <= 65535
+                and ("src" in name_lower or "dst" in name_lower)
+            )
+        ):
             if "src" in name_lower or port_count == 0:
                 return "port", "src_port", 0.92, "to_int"
             else:
@@ -181,11 +235,20 @@ class FieldDiscoveryEngine:
             return "protocol", "protocol", 0.95, "to_upper"
 
         # Check Action / Disposition
-        if "action" in name_lower or "act" in name_lower or first_sample.upper() in self.ACTIONS:
+        if (
+            "action" in name_lower
+            or "act" in name_lower
+            or first_sample.upper() in self.ACTIONS
+        ):
             return "action", "action", 0.95, "to_lower"
 
         # Check Timestamp
-        if placeholder == "<TIMESTAMP>" or "time" in name_lower or "date" in name_lower or self.ISO_DATE_REGEX.match(first_sample):
+        if (
+            placeholder == "<TIMESTAMP>"
+            or "time" in name_lower
+            or "date" in name_lower
+            or self.ISO_DATE_REGEX.match(first_sample)
+        ):
             return "timestamp", "timestamp", 0.90, None
 
         # Check Bytes

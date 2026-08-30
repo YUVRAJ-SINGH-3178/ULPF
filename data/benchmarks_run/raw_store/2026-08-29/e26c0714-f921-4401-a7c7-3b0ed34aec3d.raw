@@ -1,1 +1,0 @@
-CEF:0|Palo Alto Networks|PAN-OS|10.1.0|TRAFFIC|allow|1|src=198.51.100.88 dst=10.0.1.50 spt=61234 dpt=80 proto=TCP act=allow in=1420 out=5820 app=web-browsing cs1=RULE_WEB_PERMIT

@@ -21,7 +21,7 @@ class PaloAltoParser(BaseParser):
         parser_id: str = "palo-alto-panos-parser",
         vendor: str = "Palo Alto Networks",
         product: str = "PAN-OS",
-        version: str = "1.0.0"
+        version: str = "1.0.0",
     ):
         super().__init__(
             parser_id=parser_id,
@@ -30,15 +30,25 @@ class PaloAltoParser(BaseParser):
             format_type=FormatType.CEF,
             version=version,
             target_class="Network Activity",
-            target_class_uid=4001
+            target_class_uid=4001,
         )
         self._cef_parser = CEFParser()
 
-    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
+    def matches(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> bool:
         lower = raw_payload.lower()
-        return ("palo alto" in lower or "pan-os" in lower or "panos" in lower or "1,202" in raw_payload or (source_meta and source_meta.vendor.lower() == "palo alto"))
+        return (
+            "palo alto" in lower
+            or "pan-os" in lower
+            or "panos" in lower
+            or "1,202" in raw_payload
+            or (source_meta and source_meta.vendor.lower() == "palo alto")
+        )
 
-    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
+    def parse_fields(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> dict[str, Any]:
         raw = raw_payload.strip()
 
         # If CEF formatted
@@ -52,7 +62,14 @@ class PaloAltoParser(BaseParser):
             if action_raw.lower() in ["allow", "permitted"]:
                 cef_fields["disposition"] = "Allowed"
                 cef_fields["disposition_id"] = 1
-            elif action_raw.lower() in ["deny", "drop", "reset-client", "reset-server", "reset-both", "block"]:
+            elif action_raw.lower() in [
+                "deny",
+                "drop",
+                "reset-client",
+                "reset-server",
+                "reset-both",
+                "block",
+            ]:
                 cef_fields["disposition"] = "Blocked"
                 cef_fields["disposition_id"] = 2
             else:
@@ -68,14 +85,36 @@ class PaloAltoParser(BaseParser):
                 log_type = parts[3] if len(parts) > 3 else "TRAFFIC"
                 src_ip = parts[7] if len(parts) > 7 else ""
                 dst_ip = parts[8] if len(parts) > 8 else ""
-                src_port = int(parts[24]) if len(parts) > 24 and parts[24].isdigit() else (int(parts[9]) if len(parts) > 9 and parts[9].isdigit() else 0)
-                dst_port = int(parts[25]) if len(parts) > 25 and parts[25].isdigit() else (int(parts[10]) if len(parts) > 10 and parts[10].isdigit() else 0)
-                proto = parts[29] if len(parts) > 29 else (parts[13] if len(parts) > 13 else "TCP")
-                action = parts[30] if len(parts) > 30 else (parts[14] if len(parts) > 14 else "allow")
+                src_port = (
+                    int(parts[24])
+                    if len(parts) > 24 and parts[24].isdigit()
+                    else (int(parts[9]) if len(parts) > 9 and parts[9].isdigit() else 0)
+                )
+                dst_port = (
+                    int(parts[25])
+                    if len(parts) > 25 and parts[25].isdigit()
+                    else (
+                        int(parts[10]) if len(parts) > 10 and parts[10].isdigit() else 0
+                    )
+                )
+                proto = (
+                    parts[29]
+                    if len(parts) > 29
+                    else (parts[13] if len(parts) > 13 else "TCP")
+                )
+                action = (
+                    parts[30]
+                    if len(parts) > 30
+                    else (parts[14] if len(parts) > 14 else "allow")
+                )
                 rule = parts[11] if len(parts) > 11 else ""
                 app = parts[14] if len(parts) > 14 else ""
 
-                disposition = "Blocked" if action.lower() in ["drop", "deny", "reset-both", "block"] else "Allowed"
+                disposition = (
+                    "Blocked"
+                    if action.lower() in ["drop", "deny", "reset-both", "block"]
+                    else "Allowed"
+                )
                 disposition_id = 2 if disposition == "Blocked" else 1
 
                 return {
@@ -92,12 +131,12 @@ class PaloAltoParser(BaseParser):
                     "disposition_id": disposition_id,
                     "rule_name": rule,
                     "app_name": app,
-                    "message": f"PAN-OS {log_type} {action} {src_ip}->{dst_ip}"
+                    "message": f"PAN-OS {log_type} {action} {src_ip}->{dst_ip}",
                 }
 
         # Fallback Key-Value
         kv = {}
-        for match in re.finditer(r'([a-zA-Z0-9_]+)=([^\s,]+)', raw):
+        for match in re.finditer(r"([a-zA-Z0-9_]+)=([^\s,]+)", raw):
             kv[match.group(1)] = match.group(2)
 
         kv["device_vendor"] = "Palo Alto Networks"

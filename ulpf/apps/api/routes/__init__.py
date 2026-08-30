@@ -1,6 +1,7 @@
 """
 API Routes Package
 """
+
 from ulpf.apps.api.routes.auth_routes import router as auth_router
 from ulpf.apps.api.routes.benchmark import router as benchmark_router
 from ulpf.apps.api.routes.datalake import router as datalake_router
@@ -18,5 +19,5 @@ __all__ = [
     "events_router",
     "onboarding_router",
     "parsers_router",
-    "pipeline_router"
+    "pipeline_router",
 ]

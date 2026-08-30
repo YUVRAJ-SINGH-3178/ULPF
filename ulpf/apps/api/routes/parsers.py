@@ -32,7 +32,7 @@ def list_parsers(user: dict[str, Any] = Depends(get_current_user)):
 def get_parser_details(
     parser_id: str,
     version: str | None = None,
-    user: dict[str, Any] = Depends(get_current_user)
+    user: dict[str, Any] = Depends(get_current_user),
 ):
     """Retrieves specific parser definition and rules."""
     validate_safe_identifier(parser_id, "parser_id")
@@ -44,25 +44,32 @@ def get_parser_details(
         "parser_id": p.parser_id,
         "vendor": p.vendor,
         "product": p.product,
-        "format": p.format_type.value if hasattr(p.format_type, "value") else p.format_type,
+        "format": p.format_type.value
+        if hasattr(p.format_type, "value")
+        else p.format_type,
         "version": p.version,
         "target_class": p.target_class,
         "target_class_uid": p.target_class_uid,
-        "status": p.status.value if hasattr(p.status, "value") else p.status
+        "status": p.status.value if hasattr(p.status, "value") else p.status,
     }
 
 
 @router.post("", response_model=dict[str, Any])
 def create_or_update_parser(
     p_def: ParserDefinition,
-    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.REVIEWER]))
+    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.REVIEWER])),
 ):
     """Registers a new or versioned parser. Active parsers cannot be overwritten in place."""
     validate_safe_identifier(p_def.parser_id, "parser_id")
     orch = get_orchestrator()
     try:
         key = orch.parser_registry.register_parser_definition(p_def)
-        return {"status": "success", "key": key, "parser_id": p_def.parser_id, "version": p_def.version}
+        return {
+            "status": "success",
+            "key": key,
+            "parser_id": p_def.parser_id,
+            "version": p_def.version,
+        }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -71,7 +78,7 @@ def create_or_update_parser(
 def test_parser(
     parser_id: str,
     req: ParserTestRequest,
-    user: dict[str, Any] = Depends(get_current_user)
+    user: dict[str, Any] = Depends(get_current_user),
 ):
     """Executes a dry-run test of a parser against a sample raw log."""
     validate_safe_identifier(parser_id, "parser_id")

@@ -47,26 +47,26 @@ USERS_DB: dict[str, dict[str, Any]] = {
         "username": "admin",
         "password_hash": hash_password("admin123"),
         "role": UserRole.ADMIN,
-        "full_name": "NTRO Lead Architect (Admin)"
+        "full_name": "NTRO Lead Architect (Admin)",
     },
     "reviewer": {
         "username": "reviewer",
         "password_hash": hash_password("reviewer123"),
         "role": UserRole.REVIEWER,
-        "full_name": "Security Schema Reviewer"
+        "full_name": "Security Schema Reviewer",
     },
     "operator": {
         "username": "operator",
         "password_hash": hash_password("operator123"),
         "role": UserRole.OPERATOR,
-        "full_name": "Pipeline Ingestion Operator"
+        "full_name": "Pipeline Ingestion Operator",
     },
     "analyst": {
         "username": "analyst",
         "password_hash": hash_password("analyst123"),
         "role": UserRole.ANALYST,
-        "full_name": "SOC Cyber Threat Analyst"
-    }
+        "full_name": "SOC Cyber Threat Analyst",
+    },
 }
 
 
@@ -89,22 +89,32 @@ class LoginRequest(BaseModel):
     password: str = Field(..., min_length=1, max_length=128)
 
 
-def create_access_token(data: dict, expires_delta: datetime.timedelta | None = None) -> str:
+def create_access_token(
+    data: dict, expires_delta: datetime.timedelta | None = None
+) -> str:
     settings = get_settings()
     to_encode = data.copy()
     expire_minutes = settings.ULPF_ACCESS_TOKEN_EXPIRE_MINUTES
-    expire = datetime.datetime.now(datetime.timezone.utc) + (expires_delta or datetime.timedelta(minutes=expire_minutes))
+    expire = datetime.datetime.now(datetime.timezone.utc) + (
+        expires_delta or datetime.timedelta(minutes=expire_minutes)
+    )
     to_encode.update({"exp": expire, "token_type": "access"})
-    return jwt.encode(to_encode, settings.ULPF_SECRET_KEY, algorithm=settings.ULPF_JWT_ALGORITHM)
+    return jwt.encode(
+        to_encode, settings.ULPF_SECRET_KEY, algorithm=settings.ULPF_JWT_ALGORITHM
+    )
 
 
 def create_refresh_token(data: dict) -> str:
     settings = get_settings()
     to_encode = data.copy()
     expire_minutes = settings.ULPF_REFRESH_TOKEN_EXPIRE_MINUTES
-    expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=expire_minutes)
+    expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
+        minutes=expire_minutes
+    )
     to_encode.update({"exp": expire, "token_type": "refresh"})
-    return jwt.encode(to_encode, settings.ULPF_SECRET_KEY, algorithm=settings.ULPF_JWT_ALGORITHM)
+    return jwt.encode(
+        to_encode, settings.ULPF_SECRET_KEY, algorithm=settings.ULPF_JWT_ALGORITHM
+    )
 
 
 def verify_user(credentials: LoginRequest) -> dict[str, Any] | None:
@@ -116,7 +126,9 @@ def verify_user(credentials: LoginRequest) -> dict[str, Any] | None:
     return None
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials | None = Security(security)) -> dict[str, Any]:
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Security(security),
+) -> dict[str, Any]:
     settings = get_settings()
 
     if not credentials or not credentials.credentials:
@@ -127,37 +139,39 @@ def get_current_user(credentials: HTTPAuthorizationCredentials | None = Security
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication credentials were not provided. Set Authorization: Bearer <token>.",
-            headers={"WWW-Authenticate": "Bearer"}
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     token = credentials.credentials
     try:
-        payload = jwt.decode(token, settings.ULPF_SECRET_KEY, algorithms=[settings.ULPF_JWT_ALGORITHM])
+        payload = jwt.decode(
+            token, settings.ULPF_SECRET_KEY, algorithms=[settings.ULPF_JWT_ALGORITHM]
+        )
         if payload.get("token_type") == "refresh":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token type: refresh token cannot be used as an access token",
-                headers={"WWW-Authenticate": "Bearer"}
+                headers={"WWW-Authenticate": "Bearer"},
             )
         username: str = payload.get("sub")
         if username is None or username not in USERS_DB:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid or unrecognized user in token",
-                headers={"WWW-Authenticate": "Bearer"}
+                headers={"WWW-Authenticate": "Bearer"},
             )
         return USERS_DB[username]
     except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired. Please refresh your session.",
-            headers={"WWW-Authenticate": "Bearer"}
+            headers={"WWW-Authenticate": "Bearer"},
         )
     except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate token signature",
-            headers={"WWW-Authenticate": "Bearer"}
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
 
@@ -167,7 +181,8 @@ def require_roles(allowed_roles: list[UserRole]):
         if user_role not in allowed_roles and user_role != UserRole.ADMIN:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Operation requires one of roles: {[r.value for r in allowed_roles]}. Current role: {user_role.value if hasattr(user_role, 'value') else user_role}"
+                detail=f"Operation requires one of roles: {[r.value for r in allowed_roles]}. Current role: {user_role.value if hasattr(user_role, 'value') else user_role}",
             )
         return user
+
     return role_checker

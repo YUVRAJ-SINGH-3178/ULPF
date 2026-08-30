@@ -23,7 +23,7 @@ class UDPSyslogListener:
         host: str = "0.0.0.0",
         port: int = 5140,
         envelope_factory: EnvelopeFactory | None = None,
-        callback: Callable[[EventEnvelope], None] | None = None
+        callback: Callable[[EventEnvelope], None] | None = None,
     ):
         self.host = host
         self.port = port
@@ -58,9 +58,7 @@ class UDPSyslogListener:
                 raw_text = data.decode("utf-8", errors="replace").strip()
                 if raw_text:
                     envelope = self.factory.create_envelope(
-                        raw_payload=raw_text,
-                        transport="udp",
-                        client_ip=addr[0]
+                        raw_payload=raw_text, transport="udp", client_ip=addr[0]
                     )
                     if self.callback:
                         self.callback(envelope)
@@ -92,7 +90,7 @@ class TCPSyslogListener:
         host: str = "0.0.0.0",
         port: int = 1514,
         envelope_factory: EnvelopeFactory | None = None,
-        callback: Callable[[EventEnvelope], None] | None = None
+        callback: Callable[[EventEnvelope], None] | None = None,
     ):
         self.host = host
         self.port = port
@@ -123,7 +121,9 @@ class TCPSyslogListener:
         while self.running:
             try:
                 client_sock, addr = self._server_sock.accept()
-                t = threading.Thread(target=self._handle_client, args=(client_sock, addr), daemon=True)
+                t = threading.Thread(
+                    target=self._handle_client, args=(client_sock, addr), daemon=True
+                )
                 t.start()
             except TimeoutError:
                 continue
@@ -145,9 +145,7 @@ class TCPSyslogListener:
                     line = line.strip()
                     if line:
                         envelope = self.factory.create_envelope(
-                            raw_payload=line,
-                            transport="tcp",
-                            client_ip=addr[0]
+                            raw_payload=line, transport="tcp", client_ip=addr[0]
                         )
                         if self.callback:
                             self.callback(envelope)
@@ -175,7 +173,7 @@ class FileBatchIngestor:
     def __init__(
         self,
         envelope_factory: EnvelopeFactory | None = None,
-        callback: Callable[[EventEnvelope], None] | None = None
+        callback: Callable[[EventEnvelope], None] | None = None,
     ):
         self.factory = envelope_factory or EnvelopeFactory()
         self.callback = callback
@@ -184,7 +182,7 @@ class FileBatchIngestor:
         self,
         filepath: str,
         vendor_hint: str | None = None,
-        product_hint: str | None = None
+        product_hint: str | None = None,
     ) -> list[EventEnvelope]:
         """
         Reads a log file line-by-line, generates envelopes, and passes to callback.
@@ -198,16 +196,19 @@ class FileBatchIngestor:
             content = path.read_text(encoding="utf-8", errors="replace").strip()
             if content.startswith("[") and content.endswith("]"):
                 import json
+
                 items = json.loads(content)
                 if isinstance(items, list):
                     for item in items:
-                        raw_str = json.dumps(item) if not isinstance(item, str) else item
+                        raw_str = (
+                            json.dumps(item) if not isinstance(item, str) else item
+                        )
                         env = self.factory.create_envelope(
                             raw_payload=raw_str,
                             transport="file",
                             client_ip="127.0.0.1",
                             vendor_hint=vendor_hint,
-                            product_hint=product_hint
+                            product_hint=product_hint,
                         )
                         envelopes.append(env)
                         if self.callback:
@@ -226,7 +227,7 @@ class FileBatchIngestor:
                     transport="file",
                     client_ip="127.0.0.1",
                     vendor_hint=vendor_hint,
-                    product_hint=product_hint
+                    product_hint=product_hint,
                 )
                 envelopes.append(env)
                 if self.callback:

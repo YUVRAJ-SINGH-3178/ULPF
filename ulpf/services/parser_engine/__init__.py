@@ -1,6 +1,7 @@
 """
 Parser Engine exports
 """
+
 from ulpf.services.parser_engine.base import BaseParser
 from ulpf.services.parser_engine.cef_parser import CEFParser
 from ulpf.services.parser_engine.checkpoint_parser import CheckpointParser
@@ -26,5 +27,5 @@ __all__ = [
     "ParserRegistry",
     "SquidProxyParser",
     "SuricataEVEParser",
-    "ZeekConnParser"
+    "ZeekConnParser",
 ]

@@ -24,7 +24,7 @@ class BenchmarkRequest(BaseModel):
 @router.post("/run", response_model=dict[str, Any])
 def run_benchmark_test(
     req: BenchmarkRequest,
-    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR]))
+    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR])),
 ):
     """
     Executes an empirical load test on the local machine and measures true events/sec,

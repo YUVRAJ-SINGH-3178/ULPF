@@ -3,8 +3,9 @@ ULPF — Master Offline Launcher
 Launches ULPF FastAPI Application, Ingestion Daemons (UDP/TCP), and Cyber-Ops Dashboard.
 """
 
-import sys
 import os
+import sys
+
 import uvicorn
 
 # Ensure repository root is on Python path
@@ -34,7 +35,7 @@ def main():
             port=8000,
             reload=False,
             log_level="info",
-            loop="asyncio"
+            loop="asyncio",
         )
         server = uvicorn.Server(config)
         server.run()

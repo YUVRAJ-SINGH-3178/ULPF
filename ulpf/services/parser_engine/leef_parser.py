@@ -21,7 +21,7 @@ class LEEFParser(BaseParser):
         parser_id: str = "leef-standard-parser",
         vendor: str = "IBM-QRadar",
         product: str = "LEEF-Engine",
-        version: str = "1.0.0"
+        version: str = "1.0.0",
     ):
         super().__init__(
             parser_id=parser_id,
@@ -30,13 +30,17 @@ class LEEFParser(BaseParser):
             format_type=FormatType.LEEF,
             version=version,
             target_class="Network Activity",
-            target_class_uid=4001
+            target_class_uid=4001,
         )
 
-    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
+    def matches(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> bool:
         return "LEEF:" in raw_payload
 
-    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
+    def parse_fields(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> dict[str, Any]:
         raw = raw_payload.strip()
         leef_start = raw.find("LEEF:")
         if leef_start == -1:
@@ -46,7 +50,9 @@ class LEEFParser(BaseParser):
         parts = leef_str.split("|")
 
         if len(parts) < 5:
-            raise ValueError(f"Malformed LEEF header: too few pipe segments ({len(parts)})")
+            raise ValueError(
+                f"Malformed LEEF header: too few pipe segments ({len(parts)})"
+            )
 
         ver_tag = parts[0].replace("LEEF:", "").strip()
         vendor = parts[1].strip()
@@ -60,7 +66,7 @@ class LEEFParser(BaseParser):
             "device_product": product,
             "device_version": version,
             "event_id_raw": event_id,
-            "message": f"{vendor} {product} {event_id}"
+            "message": f"{vendor} {product} {event_id}",
         }
 
         # LEEF 2.0 may include a custom delimiter specification in header index 5
@@ -91,7 +97,10 @@ class LEEFParser(BaseParser):
             elif "\t" in ext_str:
                 items = ext_str.split("\t")
             else:
-                items = [f"{k}={v}" for k, v in re.findall(r'(\w+)=(.*?)(?=(?:\s+\w+=|$))', ext_str)]
+                items = [
+                    f"{k}={v}"
+                    for k, v in re.findall(r"(\w+)=(.*?)(?=(?:\s+\w+=|$))", ext_str)
+                ]
 
             for item in items:
                 item = item.strip()
@@ -144,7 +153,16 @@ class LEEFParser(BaseParser):
         if act_raw in ["allow", "allowed", "permit", "permitted", "accept", "pass"]:
             d["disposition"] = "Allowed"
             d["disposition_id"] = 1
-        elif act_raw in ["deny", "denied", "drop", "dropped", "block", "blocked", "close", "reject"]:
+        elif act_raw in [
+            "deny",
+            "denied",
+            "drop",
+            "dropped",
+            "block",
+            "blocked",
+            "close",
+            "reject",
+        ]:
             d["disposition"] = "Blocked"
             d["disposition_id"] = 2
         elif not d.get("disposition"):
@@ -168,5 +186,7 @@ class LEEFParser(BaseParser):
                 d["severity"] = "Informational"
                 d["severity_id"] = 1
         elif not d.get("severity"):
-            d["severity"] = "Medium" if d.get("disposition_id") == 2 else "Informational"
+            d["severity"] = (
+                "Medium" if d.get("disposition_id") == 2 else "Informational"
+            )
             d["severity_id"] = 3 if d.get("disposition_id") == 2 else 1

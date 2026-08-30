@@ -31,7 +31,7 @@ class Drain3DynamicParser(BaseParser):
         rules: list[ParserRule],
         target_class: str = "Network Activity",
         target_class_uid: int = 4001,
-        status: ParserStatus = ParserStatus.ACTIVE
+        status: ParserStatus = ParserStatus.ACTIVE,
     ):
         super().__init__(
             parser_id=parser_id,
@@ -41,7 +41,7 @@ class Drain3DynamicParser(BaseParser):
             version=version,
             target_class=target_class,
             target_class_uid=target_class_uid,
-            status=status
+            status=status,
         )
         self.template_str = template_str
         self.compiled_regex = compiled_regex
@@ -51,26 +51,34 @@ class Drain3DynamicParser(BaseParser):
         except re.error:
             self._pattern = None
 
-    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
+    def matches(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> bool:
         if not self._pattern:
             return False
         return bool(self._pattern.search(raw_payload.strip()))
 
-    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
+    def parse_fields(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> dict[str, Any]:
         raw = raw_payload.strip()
         if not self._pattern:
-            raise ValueError(f"Dynamic parser {self.parser_id} has invalid regex pattern")
+            raise ValueError(
+                f"Dynamic parser {self.parser_id} has invalid regex pattern"
+            )
 
         m = self._pattern.search(raw)
         if not m:
-            raise ValueError(f"Payload does not match dynamic template: {self.template_str}")
+            raise ValueError(
+                f"Payload does not match dynamic template: {self.template_str}"
+            )
 
         extracted = m.groupdict()
         parsed: dict[str, Any] = {
             "device_vendor": self.vendor,
             "device_product": self.product,
             "message": raw,
-            "template_str": self.template_str
+            "template_str": self.template_str,
         }
 
         # Apply mapping rules

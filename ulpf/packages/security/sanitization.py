@@ -21,25 +21,30 @@ def validate_safe_identifier(identifier: str, field_name: str = "identifier") ->
     if not identifier:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid {field_name}: cannot be empty"
+            detail=f"Invalid {field_name}: cannot be empty",
         )
 
     if len(identifier) > 128:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid {field_name}: length exceeds 128 characters"
+            detail=f"Invalid {field_name}: length exceeds 128 characters",
         )
 
-    if ".." in identifier or "/" in identifier or "\\" in identifier or "\x00" in identifier:
+    if (
+        ".." in identifier
+        or "/" in identifier
+        or "\\" in identifier
+        or "\x00" in identifier
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Security Alert: Path traversal sequence rejected in {field_name}"
+            detail=f"Security Alert: Path traversal sequence rejected in {field_name}",
         )
 
     if not IDENTIFIER_REGEX.match(identifier):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid {field_name}: contains disallowed characters"
+            detail=f"Invalid {field_name}: contains disallowed characters",
         )
 
     return identifier

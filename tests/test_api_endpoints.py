@@ -55,7 +55,9 @@ def test_api_list_parsers():
 
 
 def test_api_benchmark_execution():
-    resp = client.post("/api/benchmark/run", json={"event_count": 500, "concurrency": 2})
+    resp = client.post(
+        "/api/benchmark/run", json={"event_count": 500, "concurrency": 2}
+    )
     assert resp.status_code == 200
     bench = resp.json()
     assert bench["throughput_eps"] > 0

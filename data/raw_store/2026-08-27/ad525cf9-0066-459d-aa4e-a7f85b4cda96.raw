@@ -1,1 +1,0 @@
-CEF:0|Palo Alto Networks|PAN-OS|10.1.0|TRAFFIC|drop|7|src=198.51.100.88 dst=10.0.1.50 spt=61234 dpt=80 proto=TCP act=drop in=0 out=0 app=web-browsing cs1=RULE_PERIMETER

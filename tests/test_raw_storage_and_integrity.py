@@ -1,20 +1,22 @@
 """
 Unit Tests: Lossless Raw Event Preservation & Cryptographic SHA-256 Verification
+Tests round-trip byte preservation, SHA-256 verification, missing event handling, and tamper detection.
 """
 
 import hashlib
 import shutil
 import tempfile
+from pathlib import Path
 
 import pytest
 
-from ulpf.services.storage.raw_store import ImmutableRawStore
+from ulpf.services.storage.raw_store import LocalRawStore
 
 
 @pytest.fixture
 def temp_raw_store():
     temp_dir = tempfile.mkdtemp()
-    store = ImmutableRawStore(base_dir=temp_dir)
+    store = LocalRawStore(base_dir=temp_dir)
     yield store
     shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -54,7 +56,7 @@ def test_tamper_detection(temp_raw_store):
     event_id = "test-event-uuid-003"
 
     temp_raw_store.store_raw(raw_payload=raw_payload, event_id=event_id)
-    
+
     # Tamper payload on disk
     tampered = temp_raw_store.tamper_for_test(event_id, " [UNAUTHORIZED_MODIFICATION]")
     assert tampered is True
@@ -64,3 +66,25 @@ def test_tamper_detection(temp_raw_store):
     assert verify_res.is_valid is False
     assert verify_res.tampered is True
     assert verify_res.stored_sha256 != verify_res.computed_sha256
+
+
+def test_missing_event_integrity_verification(temp_raw_store):
+    """Verifies that verifying a nonexistent event returns an invalid result safely."""
+    verify_res = temp_raw_store.verify_integrity("non-existent-event-uuid-999")
+    assert verify_res.is_valid is False
+    assert "not found" in verify_res.details.lower()
+
+
+def test_truncated_payload_integrity_verification(temp_raw_store):
+    """Verifies that truncation of raw bytes is detected as a cryptographic violation."""
+    raw_payload = "CEF:0|Fortinet|FortiOS|7.0.0|101|Traffic Accepted|5|src=10.1.1.1 dst=10.2.2.2"
+    event_id = "test-trunc-001"
+    ref = temp_raw_store.store_raw(raw_payload=raw_payload, event_id=event_id)
+
+    # Truncate raw file on disk
+    raw_file = Path(temp_raw_store.base_dir) / ref.object_key
+    raw_file.write_text(raw_payload[:15], encoding="utf-8")
+
+    verify_res = temp_raw_store.verify_integrity(event_id)
+    assert verify_res.is_valid is False
+    assert verify_res.tampered is True

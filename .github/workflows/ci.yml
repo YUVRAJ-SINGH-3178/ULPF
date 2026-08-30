@@ -35,13 +35,12 @@ jobs:
 
       - name: Code Quality & Linting (Ruff)
         run: |
-          ruff check ulpf/ tests/
-        continue-on-error: true
+          ruff check .
+          ruff format --check .
 
       - name: Dependency Vulnerability Audit (pip-audit)
         run: |
           pip-audit --desc on || true
-        continue-on-error: true
 
       - name: Execute Full Test Suite with Coverage
         env:

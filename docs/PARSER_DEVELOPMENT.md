@@ -21,6 +21,7 @@ from typing import Dict, Any, Optional
 from ulpf.packages.schemas.models import FormatType, SourceMetadata
 from ulpf.services.parser_engine.base import BaseParser
 
+
 class CustomFirewallParser(BaseParser):
     def __init__(self):
         super().__init__(
@@ -30,14 +31,20 @@ class CustomFirewallParser(BaseParser):
             format_type=FormatType.PROPRIETARY,
             version="1.0.0",
             target_class="Network Activity",
-            target_class_uid=4001
+            target_class_uid=4001,
         )
-        self.pattern = re.compile(r"\[ACME-FW\]\s+(\S+)\s+SRC=([0-9.]+):(\d+)\s+DST=([0-9.]+):(\d+)\s+ACTION=(\w+)")
+        self.pattern = re.compile(
+            r"\[ACME-FW\]\s+(\S+)\s+SRC=([0-9.]+):(\d+)\s+DST=([0-9.]+):(\d+)\s+ACTION=(\w+)"
+        )
 
-    def matches(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> bool:
+    def matches(
+        self, raw_payload: str, source_meta: Optional[SourceMetadata] = None
+    ) -> bool:
         return "[ACME-FW]" in raw_payload
 
-    def parse_fields(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> Dict[str, Any]:
+    def parse_fields(
+        self, raw_payload: str, source_meta: Optional[SourceMetadata] = None
+    ) -> Dict[str, Any]:
         m = self.pattern.search(raw_payload)
         if not m:
             raise ValueError("Payload does not match AcmeCorp format")
@@ -51,8 +58,10 @@ class CustomFirewallParser(BaseParser):
             "dst_ip": m.group(4),
             "dst_port": int(m.group(5)),
             "action": m.group(6).lower(),
-            "disposition": "Blocked" if m.group(6).lower() in ["deny", "drop"] else "Allowed",
-            "disposition_id": 2 if m.group(6).lower() in ["deny", "drop"] else 1
+            "disposition": "Blocked"
+            if m.group(6).lower() in ["deny", "drop"]
+            else "Allowed",
+            "disposition_id": 2 if m.group(6).lower() in ["deny", "drop"] else 1,
         }
 ```
 

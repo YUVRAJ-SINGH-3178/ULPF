@@ -21,7 +21,7 @@ class SuricataEVEParser(BaseParser):
         parser_id: str = "suricata-eve-json-parser",
         vendor: str = "Suricata",
         product: str = "EVE-IDS",
-        version: str = "1.0.0"
+        version: str = "1.0.0",
     ):
         super().__init__(
             parser_id=parser_id,
@@ -30,22 +30,28 @@ class SuricataEVEParser(BaseParser):
             format_type=FormatType.JSON,
             version=version,
             target_class="Network Activity",
-            target_class_uid=4001
+            target_class_uid=4001,
         )
 
-    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
+    def matches(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> bool:
         raw = raw_payload.strip()
         if not (raw.startswith("{") and raw.endswith("}")):
             return False
-        return ("event_type" in raw and ("flow_id" in raw or "src_ip" in raw or "alert" in raw))
+        return "event_type" in raw and (
+            "flow_id" in raw or "src_ip" in raw or "alert" in raw
+        )
 
-    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
+    def parse_fields(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> dict[str, Any]:
         data = json.loads(raw_payload.strip())
         if not isinstance(data, dict):
             raise ValueError("Suricata payload is not a JSON dictionary")
 
         event_type = data.get("event_type", "flow")
-        
+
         parsed: dict[str, Any] = {
             "device_vendor": "Suricata",
             "device_product": "EVE-IDS",
@@ -59,7 +65,7 @@ class SuricataEVEParser(BaseParser):
             "dst_port": data.get("dest_port") or data.get("dst_port"),
             "protocol": data.get("proto", "TCP").upper(),
             "app_name": data.get("app_proto"),
-            "message": f"Suricata {event_type} event"
+            "message": f"Suricata {event_type} event",
         }
 
         # If it is an alert event, map to Security Finding
@@ -71,7 +77,7 @@ class SuricataEVEParser(BaseParser):
             parsed["signature_id"] = alert_info.get("signature_id")
             parsed["category"] = alert_info.get("category")
             parsed["message"] = alert_info.get("signature", "Suricata Alert")
-            
+
             # Map Suricata severity (1=High, 2=Medium, 3=Low, 4=Info)
             sev_num = alert_info.get("severity", 3)
             if sev_num == 1:

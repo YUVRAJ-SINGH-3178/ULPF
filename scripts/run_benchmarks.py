@@ -3,12 +3,13 @@ ULPF Empirical Performance Benchmark Harness
 Measures synchronous single-event and batch ingestion throughput, percentiles, and memory footprint.
 """
 
-import time
+import json
 import os
 import sys
-import psutil
-import json
+import time
 from pathlib import Path
+
+import psutil
 
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -21,13 +22,15 @@ SAMPLE_LOGS = [
     'date=2026-08-27 time=10:15:32 devname="FGT-60D" devid="FGT60D0001" logid="0000000013" type="traffic" subtype="forward" level="notice" srcip=192.168.1.100 srcport=54321 dstip=198.51.100.25 dstport=443 proto=6 action="accept" policyid=1 sentbyte=512 rcvdbyte=1024',
     "<134>Aug 27 10:15:35 chkp-fw01 CheckPoint: action=drop; src=203.0.113.88; dst=10.0.0.1; proto=tcp; s_port=55123; service=23; rule_name=DROP_TELNET;",
     "1693131336.120    15 192.168.1.100 TCP_DENIED/403 1420 GET http://malicious-domain.xyz/payload.exe - NONE/- text/html",
-    '{"ts":1693131334.5,"uid":"C1234567890","id.orig_h":"192.168.1.105","id.orig_p":49152,"id.resp_h":"10.0.0.10","id.resp_p":5432,"proto":"tcp","service":"postgresql","duration":0.045,"orig_bytes":1024,"resp_bytes":4096,"conn_state":"SF"}'
+    '{"ts":1693131334.5,"uid":"C1234567890","id.orig_h":"192.168.1.105","id.orig_p":49152,"id.resp_h":"10.0.0.10","id.resp_p":5432,"proto":"tcp","service":"postgresql","duration":0.045,"orig_bytes":1024,"resp_bytes":4096,"conn_state":"SF"}',
 ]
 
 
 def run_benchmark():
     bench_dir = Path("data/benchmarks_run")
-    orch = PipelineOrchestrator(base_dir=str(bench_dir), enable_data_lake_auto_flush=False)
+    orch = PipelineOrchestrator(
+        base_dir=str(bench_dir), enable_data_lake_auto_flush=False
+    )
 
     print("--- Running Single Ingest Benchmark (300 events) ---")
     single_lats = []
@@ -59,18 +62,18 @@ def run_benchmark():
             "p95_latency_ms": round(single_lats[int(len(single_lats) * 0.95)], 3),
             "p99_latency_ms": round(single_lats[int(len(single_lats) * 0.99)], 3),
             "min_latency_ms": round(single_lats[0], 3),
-            "max_latency_ms": round(single_lats[-1], 3)
+            "max_latency_ms": round(single_lats[-1], 3),
         },
         "batch_ingest": {
             "total_events": 1000,
             "duration_sec": round(batch_dur, 3),
-            "throughput_eps": round(batch_eps, 1)
+            "throughput_eps": round(batch_eps, 1),
         },
         "system": {
             "process_memory_rss_mb": round(mem_mb, 1),
             "python_version": "3.13.5",
-            "os": "Windows 11"
-        }
+            "os": "Windows 11",
+        },
     }
 
     print("\n=== ULPF EMPIRICAL BENCHMARK RESULTS ===")

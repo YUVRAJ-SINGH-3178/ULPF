@@ -74,7 +74,7 @@ class ParserRegistry:
                 target_class=p.target_class,
                 target_class_uid=p.target_class_uid,
                 status=p.status,
-                author="system"
+                author="system",
             )
 
     def _load_persisted_parsers(self):
@@ -100,7 +100,7 @@ class ParserRegistry:
                             rules=p_def.rules,
                             target_class=p_def.target_class,
                             target_class_uid=p_def.target_class_uid,
-                            status=p_def.status
+                            status=p_def.status,
                         )
                         self._parsers[key] = dyn_parser
             except Exception:
@@ -113,8 +113,13 @@ class ParserRegistry:
         """
         with self._lock:
             key = f"{p_def.parser_id}:{p_def.version}"
-            if key in self._parsers and self._parsers[key].status == ParserStatus.ACTIVE:
-                raise ValueError(f"Cannot overwrite active parser {key}. Please publish a new version increment (e.g. 1.1.0).")
+            if (
+                key in self._parsers
+                and self._parsers[key].status == ParserStatus.ACTIVE
+            ):
+                raise ValueError(
+                    f"Cannot overwrite active parser {key}. Please publish a new version increment (e.g. 1.1.0)."
+                )
 
             self._parser_defs[key] = p_def
 
@@ -129,46 +134,68 @@ class ParserRegistry:
                     rules=p_def.rules,
                     target_class=p_def.target_class,
                     target_class_uid=p_def.target_class_uid,
-                    status=p_def.status
+                    status=p_def.status,
                 )
                 self._parsers[key] = dyn_parser
 
             # Persist to disk
-            out_file = self.persistence_dir / f"{p_def.parser_id}_v{p_def.version.replace('.', '_')}.json"
+            out_file = (
+                self.persistence_dir
+                / f"{p_def.parser_id}_v{p_def.version.replace('.', '_')}.json"
+            )
             with open(out_file, "w", encoding="utf-8") as f:
                 json.dump(p_def.model_dump(), f, indent=2)
 
             return key
 
-    def find_parser(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> BaseParser | None:
+    def find_parser(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> BaseParser | None:
         """
         Finds the best matching ACTIVE parser for a given raw payload.
         Prioritizes specific vendor parsers over generic fallbacks.
         """
         with self._lock:
-            active_parsers = [p for p in self._parsers.values() if p.status == ParserStatus.ACTIVE]
+            active_parsers = [
+                p for p in self._parsers.values() if p.status == ParserStatus.ACTIVE
+            ]
 
         # 1. First check specific vendor/product parsers
-        specific_parsers = [p for p in active_parsers if not p.parser_id.startswith("generic") and not p.parser_id.startswith("syslog-rfc")]
+        specific_parsers = [
+            p
+            for p in active_parsers
+            if not p.parser_id.startswith("generic")
+            and not p.parser_id.startswith("syslog-rfc")
+        ]
         for parser in specific_parsers:
             if parser.matches(raw_payload, source_meta):
                 return parser
 
         # 2. Check dynamic/onboarded parsers
-        dynamic_parsers = [p for p in active_parsers if isinstance(p, Drain3DynamicParser)]
+        dynamic_parsers = [
+            p for p in active_parsers if isinstance(p, Drain3DynamicParser)
+        ]
         for parser in dynamic_parsers:
             if parser.matches(raw_payload, source_meta):
                 return parser
 
         # 3. Check generic parsers
-        generic_parsers = [p for p in active_parsers if p.parser_id.startswith("generic") or p.parser_id.startswith("syslog-rfc") or p.parser_id in ["cef-standard-parser", "leef-standard-parser"]]
+        generic_parsers = [
+            p
+            for p in active_parsers
+            if p.parser_id.startswith("generic")
+            or p.parser_id.startswith("syslog-rfc")
+            or p.parser_id in ["cef-standard-parser", "leef-standard-parser"]
+        ]
         for parser in generic_parsers:
             if parser.matches(raw_payload, source_meta):
                 return parser
 
         return None
 
-    def get_parser(self, parser_id: str, version: str | None = None) -> BaseParser | None:
+    def get_parser(
+        self, parser_id: str, version: str | None = None
+    ) -> BaseParser | None:
         with self._lock:
             if version:
                 return self._parsers.get(f"{parser_id}:{version}")
@@ -185,7 +212,9 @@ class ParserRegistry:
                 result.append(p_def.model_dump())
             return result
 
-    def test_parser(self, parser_id: str, sample_payload: str, version: str | None = None) -> dict[str, Any]:
+    def test_parser(
+        self, parser_id: str, sample_payload: str, version: str | None = None
+    ) -> dict[str, Any]:
         parser = self.get_parser(parser_id, version)
         if not parser:
             return {"success": False, "error": f"Parser {parser_id} not found"}
@@ -197,5 +226,5 @@ class ParserRegistry:
             "version": parser.version,
             "parsed_fields": parsed_fields,
             "errors": meta.errors,
-            "parse_duration_ms": meta.parse_duration_ms
+            "parse_duration_ms": meta.parse_duration_ms,
         }

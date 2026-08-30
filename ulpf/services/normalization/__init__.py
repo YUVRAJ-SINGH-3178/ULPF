@@ -1,6 +1,7 @@
 """
 Normalization subsystem exports
 """
+
 from ulpf.services.normalization.enums import (
     DIRECTION_NAMES,
     DISPOSITION_NAMES,
@@ -30,5 +31,5 @@ __all__ = [
     "OCSFNormalizer",
     "OCSFSeverity",
     "OCSFStatus",
-    "normalize_protocol"
+    "normalize_protocol",
 ]

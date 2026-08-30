@@ -31,7 +31,9 @@ def test_settings_fail_fast_in_prod_mode():
         Settings(ULPF_DEMO_MODE=False, ULPF_SECRET_KEY="short")
 
     # Valid secret in non-demo mode
-    valid_settings = Settings(ULPF_DEMO_MODE=False, ULPF_SECRET_KEY="12345678901234567890")
+    valid_settings = Settings(
+        ULPF_DEMO_MODE=False, ULPF_SECRET_KEY="12345678901234567890"
+    )
     assert valid_settings.ULPF_SECRET_KEY == "12345678901234567890"
 
 
@@ -47,21 +49,25 @@ def test_password_hashing_and_verification():
 def test_auth_login_and_refresh_flow():
     """Tests /api/auth/login and /api/auth/refresh endpoints."""
     client = TestClient(app)
-    
+
     # 1. Successful Login
-    resp = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+    resp = client.post(
+        "/api/auth/login", json={"username": "admin", "password": "admin123"}
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert "access_token" in data
     assert "refresh_token" in data
     assert data["username"] == "admin"
     assert data["role"] == "ADMIN"
-    
+
     access_token = data["access_token"]
     refresh_token = data["refresh_token"]
 
     # 2. Authenticated /me check
-    me_resp = client.get("/api/auth/me", headers={"Authorization": f"Bearer {access_token}"})
+    me_resp = client.get(
+        "/api/auth/me", headers={"Authorization": f"Bearer {access_token}"}
+    )
     assert me_resp.status_code == 200
     assert me_resp.json()["username"] == "admin"
 
@@ -73,7 +79,9 @@ def test_auth_login_and_refresh_flow():
     assert ref_data["username"] == "admin"
 
     # 4. Invalid refresh token rejected
-    bad_ref_resp = client.post("/api/auth/refresh", json={"refresh_token": "corrupt-token-xxx"})
+    bad_ref_resp = client.post(
+        "/api/auth/refresh", json={"refresh_token": "corrupt-token-xxx"}
+    )
     assert bad_ref_resp.status_code == 401
 
 
@@ -81,18 +89,20 @@ def test_auth_prod_mode_enforcement(monkeypatch):
     """Tests that when ULPF_DEMO_MODE=False, unauthenticated requests return 401."""
     custom_settings = Settings(
         ULPF_DEMO_MODE=False,
-        ULPF_SECRET_KEY="production-secret-key-at-least-32-chars-long"
+        ULPF_SECRET_KEY="production-secret-key-at-least-32-chars-long",
     )
     reset_settings(custom_settings)
 
     client = TestClient(app)
-    
+
     # Without auth header -> must return 401
     resp = client.get("/api/auth/me")
     assert resp.status_code == 401
 
     # With bad token -> must return 401
-    resp_bad = client.get("/api/auth/me", headers={"Authorization": "Bearer invalid.token.payload"})
+    resp_bad = client.get(
+        "/api/auth/me", headers={"Authorization": "Bearer invalid.token.payload"}
+    )
     assert resp_bad.status_code == 401
 
 
@@ -107,8 +117,7 @@ def test_state_persistence_across_restart(tmp_path):
     # Process 1: Create registry, register a dynamic parser, and start an onboarding session
     reg1 = ParserRegistry(persistence_dir=str(parsers_dir))
     session_mgr1 = OnboardingSessionManager(
-        parser_registry=reg1,
-        persistence_dir=str(sessions_dir)
+        parser_registry=reg1, persistence_dir=str(sessions_dir)
     )
 
     # 1. Register a custom parser
@@ -119,7 +128,7 @@ def test_state_persistence_across_restart(tmp_path):
         version="1.0.0",
         format=FormatType.PROPRIETARY,
         pattern=r"^SENSOR (?P<src_ip>\S+) (?P<msg>.*)$",
-        rules=[]
+        rules=[],
     )
     reg1.register_parser_definition(p_def)
 
@@ -127,7 +136,7 @@ def test_state_persistence_across_restart(tmp_path):
     session = session_mgr1.process_unknown_log(
         raw_payload="SENSOR 10.0.0.1 SYSTEM_STATUS_OK",
         vendor_hint="CustomSensor",
-        product_hint="Sensor-V1"
+        product_hint="Sensor-V1",
     )
     session_id = session.session_id
     assert session_id is not None
@@ -135,8 +144,7 @@ def test_state_persistence_across_restart(tmp_path):
     # Simulate Process Restart (creating fresh instances pointing to the same directories)
     reg2 = ParserRegistry(persistence_dir=str(parsers_dir))
     session_mgr2 = OnboardingSessionManager(
-        parser_registry=reg2,
-        persistence_dir=str(sessions_dir)
+        parser_registry=reg2, persistence_dir=str(sessions_dir)
     )
 
     # Verify parser survived restart
@@ -152,16 +160,13 @@ def test_state_persistence_across_restart(tmp_path):
 
     # Approve and publish on restarted process
     pub_res = session_mgr2.approve_and_publish(
-        session_id=session_id,
-        reviewed_by="admin-user",
-        version="1.0.0"
+        session_id=session_id, reviewed_by="admin-user", version="1.0.0"
     )
     assert pub_res["success"] is True
 
     # Check audit trail persistence across a 3rd restart
     session_mgr3 = OnboardingSessionManager(
-        parser_registry=reg2,
-        persistence_dir=str(sessions_dir)
+        parser_registry=reg2, persistence_dir=str(sessions_dir)
     )
     audits = session_mgr3.get_audit_trail()
     assert len(audits) >= 1

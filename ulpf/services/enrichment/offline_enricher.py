@@ -15,23 +15,98 @@ class OfflineEnricher:
 
     # Static Enterprise Asset Inventory for NTRO / Enterprise Perimeter
     ASSET_INVENTORY: dict[str, dict[str, Any]] = {
-        "10.0.0.1": {"name": "CORE-GW-01", "role": "Core Perimeter Gateway", "zone": "DMZ", "criticality": "High"},
-        "10.0.0.5": {"name": "DC-PRIMARY-01", "role": "Domain Controller Active Directory", "zone": "Internal-Core", "criticality": "Critical"},
-        "10.0.0.10": {"name": "DB-PROD-CLUSTER", "role": "Primary Database Cluster", "zone": "Database-Secure", "criticality": "Critical"},
-        "10.0.1.50": {"name": "WEB-FRONTEND-01", "role": "Public Web Portal", "zone": "DMZ-Public", "criticality": "High"},
-        "192.168.1.1": {"name": "FW-EDGE-PRIMARY", "role": "NextGen Perimeter Firewall", "zone": "Perimeter", "criticality": "Critical"},
-        "192.168.1.100": {"name": "ADMIN-SEC-STATION", "role": "SOC Analyst Workstation", "zone": "Management", "criticality": "Medium"},
-        "192.168.1.105": {"name": "DEV-BUILD-RUNNER", "role": "Internal Build Agent", "zone": "Development", "criticality": "Low"},
-        "172.16.0.1": {"name": "VPN-CONCENTRATOR", "role": "Remote Access Gateway", "zone": "VPN-Edge", "criticality": "High"}
+        "10.0.0.1": {
+            "name": "CORE-GW-01",
+            "role": "Core Perimeter Gateway",
+            "zone": "DMZ",
+            "criticality": "High",
+        },
+        "10.0.0.5": {
+            "name": "DC-PRIMARY-01",
+            "role": "Domain Controller Active Directory",
+            "zone": "Internal-Core",
+            "criticality": "Critical",
+        },
+        "10.0.0.10": {
+            "name": "DB-PROD-CLUSTER",
+            "role": "Primary Database Cluster",
+            "zone": "Database-Secure",
+            "criticality": "Critical",
+        },
+        "10.0.1.50": {
+            "name": "WEB-FRONTEND-01",
+            "role": "Public Web Portal",
+            "zone": "DMZ-Public",
+            "criticality": "High",
+        },
+        "192.168.1.1": {
+            "name": "FW-EDGE-PRIMARY",
+            "role": "NextGen Perimeter Firewall",
+            "zone": "Perimeter",
+            "criticality": "Critical",
+        },
+        "192.168.1.100": {
+            "name": "ADMIN-SEC-STATION",
+            "role": "SOC Analyst Workstation",
+            "zone": "Management",
+            "criticality": "Medium",
+        },
+        "192.168.1.105": {
+            "name": "DEV-BUILD-RUNNER",
+            "role": "Internal Build Agent",
+            "zone": "Development",
+            "criticality": "Low",
+        },
+        "172.16.0.1": {
+            "name": "VPN-CONCENTRATOR",
+            "role": "Remote Access Gateway",
+            "zone": "VPN-Edge",
+            "criticality": "High",
+        },
     }
 
     # Offline GeoIP Subnet Ranges
     OFFLINE_GEO_RANGES = [
-        {"network": "8.8.8.0/24", "country": "United States", "country_code": "US", "city": "Mountain View", "as_name": "Google LLC", "as_num": 15169},
-        {"network": "1.1.1.0/24", "country": "Australia", "country_code": "AU", "city": "Sydney", "as_name": "Cloudflare Inc", "as_num": 13335},
-        {"network": "203.0.113.0/24", "country": "India", "country_code": "IN", "city": "New Delhi", "as_name": "NTRO Secure Backbone", "as_num": 55836},
-        {"network": "198.51.100.0/24", "country": "Germany", "country_code": "DE", "city": "Frankfurt", "as_name": "European IX", "as_num": 24940},
-        {"network": "185.220.101.0/24", "country": "Netherlands", "country_code": "NL", "city": "Amsterdam", "as_name": "Tor Exit Node Network", "as_num": 60729}
+        {
+            "network": "8.8.8.0/24",
+            "country": "United States",
+            "country_code": "US",
+            "city": "Mountain View",
+            "as_name": "Google LLC",
+            "as_num": 15169,
+        },
+        {
+            "network": "1.1.1.0/24",
+            "country": "Australia",
+            "country_code": "AU",
+            "city": "Sydney",
+            "as_name": "Cloudflare Inc",
+            "as_num": 13335,
+        },
+        {
+            "network": "203.0.113.0/24",
+            "country": "India",
+            "country_code": "IN",
+            "city": "New Delhi",
+            "as_name": "NTRO Secure Backbone",
+            "as_num": 55836,
+        },
+        {
+            "network": "198.51.100.0/24",
+            "country": "Germany",
+            "country_code": "DE",
+            "city": "Frankfurt",
+            "as_name": "European IX",
+            "as_num": 24940,
+        },
+        {
+            "network": "185.220.101.0/24",
+            "country": "Netherlands",
+            "country_code": "NL",
+            "city": "Amsterdam",
+            "as_name": "Tor Exit Node Network",
+            "as_num": 60729,
+        },
     ]
 
     def enrich(self, ocsf_doc: dict[str, Any]) -> dict[str, Any]:
@@ -69,7 +144,7 @@ class OfflineEnricher:
                 "name": asset["name"],
                 "role": asset["role"],
                 "zone": asset["zone"],
-                "criticality": asset["criticality"]
+                "criticality": asset["criticality"],
             }
 
         # 3. Offline GeoIP check for public IPs
@@ -80,10 +155,10 @@ class OfflineEnricher:
                     ep["location"] = {
                         "country": geo["country"],
                         "city": geo["city"],
-                        "country_code": geo["country_code"]
+                        "country_code": geo["country_code"],
                     }
                     ep["autonomous_system"] = {
                         "name": geo["as_name"],
-                        "number": geo["as_num"]
+                        "number": geo["as_num"],
                     }
                     break

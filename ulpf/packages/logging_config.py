@@ -27,7 +27,7 @@ class JSONFormatter(logging.Formatter):
             "function": record.funcName,
             "line": record.lineno,
             "process_id": record.process,
-            "thread_name": record.threadName
+            "thread_name": record.threadName,
         }
 
         # Include custom extra fields if attached
@@ -69,7 +69,7 @@ def configure_logging(level: str | None = None, log_format: str | None = None):
     else:
         text_formatter = logging.Formatter(
             "[%(asctime)s] [%(levelname)s] [%(name)s:%(funcName)s:%(lineno)d] %(message)s",
-            datefmt="%Y-%m-%dT%H:%M:%SZ"
+            datefmt="%Y-%m-%dT%H:%M:%SZ",
         )
         stream_handler.setFormatter(text_formatter)
 

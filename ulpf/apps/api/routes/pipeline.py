@@ -1,6 +1,6 @@
 """
 Pipeline Telemetry, Real-time Health, and Prometheus Metrics API Endpoints
-Provides deep operational inspection, component diagnostics, and Prometheus OpenMetrics scraping.
+Provides deep operational inspection, component diagnostics (MinIO, OpenSearch, DuckDB), and Prometheus OpenMetrics scraping.
 """
 
 import os
@@ -30,7 +30,15 @@ def get_pipeline_metrics(user: dict[str, Any] = Depends(get_current_user)):
         "summary": siem_summary,
         "active_parsers_count": len(orch.parser_registry.list_parsers()),
         "onboarding_sessions_count": len(orch.onboarding_manager.list_sessions()),
-        "unresolved_errors_count": len(orch.error_queue.list_errors(status="UNRESOLVED"))
+        "unresolved_errors_count": len(
+            orch.error_queue.list_errors(status="UNRESOLVED")
+        ),
+        "storage_backend": getattr(
+            orch.raw_store, "__class__", type(orch.raw_store)
+        ).__name__,
+        "search_backend": getattr(
+            orch.search_index, "__class__", type(orch.search_index)
+        ).__name__,
     }
 
 
@@ -43,7 +51,6 @@ def get_prometheus_metrics(response: Response):
     try:
         orch = get_orchestrator()
         rt = orch.get_realtime_metrics()
-        siem = orch.search_index.get_metrics_summary()
         unresolved = len(orch.error_queue.list_errors(status="UNRESOLVED"))
         active_parsers = len(orch.parser_registry.list_parsers())
         process = psutil.Process(os.getpid())
@@ -52,6 +59,11 @@ def get_prometheus_metrics(response: Response):
         total_ingested = orch.total_ingested
         total_normalized = orch.total_normalized
         failed_count = unresolved
+
+        raw_health = orch.raw_store.health_check()
+        search_health = orch.search_index.health_check()
+        minio_up = 1 if raw_health.get("status") == "HEALTHY" else 0
+        search_up = 1 if search_health.get("status") == "HEALTHY" else 0
 
         lines = [
             "# HELP ulpf_events_ingested_total Total raw events received by the framework",
@@ -65,13 +77,13 @@ def get_prometheus_metrics(response: Response):
             "",
             "# HELP ulpf_pipeline_latency_seconds Latency percentiles across pipeline stages",
             "# TYPE ulpf_pipeline_latency_seconds gauge",
-            f'ulpf_pipeline_latency_seconds{{quantile="0.50"}} {rt.get("p50_latency_ms", 0.0) / 1000.0:.6f}',
-            f'ulpf_pipeline_latency_seconds{{quantile="0.95"}} {rt.get("p95_latency_ms", 0.0) / 1000.0:.6f}',
-            f'ulpf_pipeline_latency_seconds{{quantile="0.99"}} {rt.get("p99_latency_ms", 0.0) / 1000.0:.6f}',
+            f'ulpf_pipeline_latency_seconds{{quantile="0.50"}} {rt.get("latency_p50_ms", 0.0) / 1000.0:.6f}',
+            f'ulpf_pipeline_latency_seconds{{quantile="0.95"}} {rt.get("latency_p95_ms", 0.0) / 1000.0:.6f}',
+            f'ulpf_pipeline_latency_seconds{{quantile="0.99"}} {rt.get("latency_p99_ms", 0.0) / 1000.0:.6f}',
             "",
             "# HELP ulpf_events_per_second Current 5-second sliding window throughput",
             "# TYPE ulpf_events_per_second gauge",
-            f'ulpf_events_per_second {rt.get("eps_current", 0.0)}',
+            f"ulpf_events_per_second {rt.get('current_eps', 0.0)}",
             "",
             "# HELP ulpf_backpressure_queue_depth Pending batch buffer size",
             "# TYPE ulpf_backpressure_queue_depth gauge",
@@ -81,28 +93,44 @@ def get_prometheus_metrics(response: Response):
             "# TYPE ulpf_active_parsers gauge",
             f"ulpf_active_parsers {active_parsers}",
             "",
+            "# HELP ulpf_raw_storage_health Health status of raw storage backend (1=healthy, 0=unhealthy)",
+            "# TYPE ulpf_raw_storage_health gauge",
+            f"ulpf_raw_storage_health {minio_up}",
+            "",
+            "# HELP ulpf_search_store_health Health status of search store backend (1=healthy, 0=unhealthy)",
+            "# TYPE ulpf_search_store_health gauge",
+            f"ulpf_search_store_health {search_up}",
+            "",
             "# HELP ulpf_memory_bytes Resident set memory utilized by python process",
             "# TYPE ulpf_memory_bytes gauge",
             f"ulpf_memory_bytes {mem_rss}",
-            ""
+            "",
         ]
 
         response.headers["Content-Type"] = "text/plain; version=0.0.4; charset=utf-8"
-        return Response(content="\n".join(lines), media_type="text/plain; version=0.0.4; charset=utf-8")
+        return Response(
+            content="\n".join(lines),
+            media_type="text/plain; version=0.0.4; charset=utf-8",
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate prometheus metrics: {e!s}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to generate prometheus metrics: {e!s}"
+        )
 
 
 @router.get("/health", response_model=dict[str, Any])
-def get_system_health(response: Response, user: dict[str, Any] = Depends(get_current_user)):
+def get_system_health(
+    response: Response, user: dict[str, Any] = Depends(get_current_user)
+):
     """
     Comprehensive Deep Health Check.
     Inspects:
-    1. SQLite Search Index connectivity & queryability.
-    2. DuckDB in-memory analytical engine responsiveness.
-    3. Storage directory accessibility and disk free space.
-    4. Process memory thresholds.
-    5. Offline air-gap security state.
+    1. Raw Storage Backend (MinIO Object Store or LocalRawStore).
+    2. Search Store Backend (OpenSearch Cluster or SQLite FTS5).
+    3. DuckDB in-memory analytical engine responsiveness.
+    4. Disk Storage accessibility & free space.
+    5. Process memory footprint.
+    6. Air-gap security compliance state.
 
     Returns HTTP 200 for HEALTHY, HTTP 503 if any critical subsystem is DEGRADED.
     """
@@ -112,20 +140,37 @@ def get_system_health(response: Response, user: dict[str, Any] = Depends(get_cur
     is_healthy = True
     issues = []
 
-    # 1. Test SQLite Search Index
+    # 1. Test Raw Store (MinIO or Local)
     try:
-        conn = orch.search_index._get_conn()
-        cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM normalized_events")
-        row_count = cur.fetchone()[0]
-        conn.close()
-        subsystem_status["sqlite_search_index"] = f"HEALTHY ({row_count} records indexed)"
+        raw_health = orch.raw_store.health_check()
+        subsystem_status["raw_storage"] = raw_health
+        if raw_health.get("status") != "HEALTHY":
+            is_healthy = False
+            issues.append(f"Raw storage unhealthy: {raw_health}")
     except Exception as e:
+        subsystem_status["raw_storage"] = {"status": "DEGRADED", "error": str(e)}
+        is_healthy = False
+        issues.append(f"Raw storage error: {e}")
+
+    # 2. Test Search Store (OpenSearch or SQLite)
+    try:
+        search_health = orch.search_index.health_check()
+        subsystem_status["search_store"] = search_health
+        subsystem_status["sqlite_search_index"] = (
+            f"HEALTHY ({search_health.get('indexed_records', 0)} records indexed)"
+            if search_health.get("status") == "HEALTHY"
+            else "DEGRADED"
+        )
+        if search_health.get("status") != "HEALTHY":
+            is_healthy = False
+            issues.append(f"Search store unhealthy: {search_health}")
+    except Exception as e:
+        subsystem_status["search_store"] = {"status": "DEGRADED", "error": str(e)}
         subsystem_status["sqlite_search_index"] = f"DEGRADED ({e!s})"
         is_healthy = False
-        issues.append(f"SQLite Index error: {e}")
+        issues.append(f"Search store error: {e}")
 
-    # 2. Test DuckDB Engine
+    # 3. Test DuckDB Engine
     try:
         d_conn = duckdb.connect(":memory:")
         d_res = d_conn.execute("SELECT 1 + 1 as val").fetchone()
@@ -139,16 +184,17 @@ def get_system_health(response: Response, user: dict[str, Any] = Depends(get_cur
         is_healthy = False
         issues.append(f"DuckDB error: {e}")
 
-    # 3. Check Disk Storage Directories
+    # 4. Check Disk Storage Directories
     try:
         base_dir = Path(orch.base_dir)
         if not base_dir.exists():
             base_dir.mkdir(parents=True, exist_ok=True)
-        # Check disk free space
         disk_usage = psutil.disk_usage(str(base_dir.resolve()))
         free_mb = disk_usage.free / (1024 * 1024)
         if free_mb < 100:  # Less than 100MB free
-            subsystem_status["storage_volume"] = f"CRITICAL_LOW_DISK ({free_mb:.1f} MB free)"
+            subsystem_status["storage_volume"] = (
+                f"CRITICAL_LOW_DISK ({free_mb:.1f} MB free)"
+            )
             is_healthy = False
             issues.append(f"Low disk space: {free_mb:.1f} MB remaining")
         else:
@@ -158,7 +204,7 @@ def get_system_health(response: Response, user: dict[str, Any] = Depends(get_cur
         is_healthy = False
         issues.append(f"Storage volume check error: {e}")
 
-    # 4. Check Process Memory
+    # 5. Check Process Memory
     process = psutil.Process(os.getpid())
     mem_info = process.memory_info()
     mem_mb = mem_info.rss / (1024 * 1024)
@@ -180,19 +226,18 @@ def get_system_health(response: Response, user: dict[str, Any] = Depends(get_cur
         "issues": issues,
         "subsystems": subsystem_status,
         "components": {
-            "raw_storage": "ONLINE (Lossless Write-Once)",
-            "siem_search_index": "ONLINE (SQLite 3 WAL + FTS5)",
+            "raw_storage": f"ONLINE ({getattr(orch.raw_store, '__class__', type(orch.raw_store)).__name__})",
+            "search_index": f"ONLINE ({getattr(orch.search_index, '__class__', type(orch.search_index)).__name__})",
             "data_lake": "ONLINE (Apache Parquet + DuckDB)",
             "format_detector": "ONLINE",
             "parser_registry": "ONLINE",
             "ocsf_normalizer": "ONLINE (OCSF 1.1.0)",
             "drain3_miner": "ONLINE (Streaming Clusterer)",
             "validator": "ONLINE (SHA-256 + Schema)",
-            "offline_enricher": "ONLINE (Air-Gapped GeoIP/Asset)"
+            "offline_enricher": "ONLINE (Air-Gapped GeoIP/Asset)",
         },
         "system_resources": {
             "process_memory_mb": round(mem_mb, 2),
-            "raw_storage_dir": str(orch.raw_store.base_dir),
-            "system_uptime_seconds": round(time.time() - psutil.boot_time(), 0)
-        }
+            "system_uptime_seconds": round(time.time() - psutil.boot_time(), 0),
+        },
     }

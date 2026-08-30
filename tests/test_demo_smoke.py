@@ -27,7 +27,10 @@ def test_story_1_known_log_trace_end_to_end():
     )
 
     # 1. Ingest
-    ingest_resp = client.post("/api/events/ingest", json={"raw_payload": sample_asa, "transport": "demo_smoke"})
+    ingest_resp = client.post(
+        "/api/events/ingest",
+        json={"raw_payload": sample_asa, "transport": "demo_smoke"},
+    )
     assert ingest_resp.status_code == 200
     ingest_data = ingest_resp.json()
 
@@ -53,7 +56,10 @@ def test_story_1_known_log_trace_end_to_end():
     assert verify_data["tampered"] is False
 
     # 4. Search via SIEM Faceted Search
-    search_resp = client.get("/api/events", params={"vendor": "Cisco", "src_ip": "198.51.100.25", "disposition": "Allowed"})
+    search_resp = client.get(
+        "/api/events",
+        params={"vendor": "Cisco", "src_ip": "198.51.100.25", "disposition": "Allowed"},
+    )
     assert search_resp.status_code == 200
     search_data = search_resp.json()
     assert search_data["total"] >= 1
@@ -72,6 +78,7 @@ def test_story_2_unknown_log_onboarding_end_to_end():
     6. Verify audit log entry for reviewer action.
     """
     import uuid
+
     run_id = uuid.uuid4().hex[:6]
     custom_parser_id = f"edgeguard_{run_id}"
 
@@ -79,11 +86,14 @@ def test_story_2_unknown_log_onboarding_end_to_end():
     unseen_log_2 = f"2026-08-27 10:15:35 [PROP_FW_{run_id}] src=192.168.10.88 dst=10.20.30.99 sport=51234 dport=443 proto=TCP act=DROP"
 
     # 1. Mine first unseen log
-    mine_resp = client.post("/api/onboarding/mine", json={
-        "raw_payload": unseen_log_1,
-        "vendor_hint": "ProprietaryCorp",
-        "product_hint": "EdgeGuard"
-    })
+    mine_resp = client.post(
+        "/api/onboarding/mine",
+        json={
+            "raw_payload": unseen_log_1,
+            "vendor_hint": "ProprietaryCorp",
+            "product_hint": "EdgeGuard",
+        },
+    )
     assert mine_resp.status_code == 200
     session_data = mine_resp.json()
     session_id = session_data["session_id"]
@@ -96,25 +106,30 @@ def test_story_2_unknown_log_onboarding_end_to_end():
     assert detail_resp.json()["discovered_template"] is not None
 
     # 3. Update a variable mapping
-    update_resp = client.put(f"/api/onboarding/{session_id}/mapping", json={
-        "var_index": 0,
-        "target_ocsf_field": "src_endpoint.ip",
-        "inferred_type": "ipv4"
-    })
+    update_resp = client.put(
+        f"/api/onboarding/{session_id}/mapping",
+        json={
+            "var_index": 0,
+            "target_ocsf_field": "src_endpoint.ip",
+            "inferred_type": "ipv4",
+        },
+    )
     assert update_resp.status_code == 200
     assert update_resp.json()["status"] == "success"
 
     # 4. Approve and Publish Custom Parser
-    approve_resp = client.post(f"/api/onboarding/{session_id}/approve", json={
-        "custom_parser_id": custom_parser_id,
-        "version": "1.0.0"
-    })
+    approve_resp = client.post(
+        f"/api/onboarding/{session_id}/approve",
+        json={"custom_parser_id": custom_parser_id, "version": "1.0.0"},
+    )
     assert approve_resp.status_code == 200
     approve_data = approve_resp.json()
     assert approve_data["success"] is True
 
     # 5. Ingest subsequent matching log line -> Zero-touch parsing
-    ingest_2_resp = client.post("/api/events/ingest", json={"raw_payload": unseen_log_2})
+    ingest_2_resp = client.post(
+        "/api/events/ingest", json={"raw_payload": unseen_log_2}
+    )
     assert ingest_2_resp.status_code == 200
     ingest_2_data = ingest_2_resp.json()
     assert ingest_2_data["ocsf"] is not None
@@ -125,5 +140,7 @@ def test_story_2_unknown_log_onboarding_end_to_end():
     assert audit_resp.status_code == 200
     audits = audit_resp.json()
     assert len(audits) >= 1
-    published_entries = [a for a in audits if a.get("action") == "ONBOARDING_APPROVED_AND_PUBLISHED"]
+    published_entries = [
+        a for a in audits if a.get("action") == "ONBOARDING_APPROVED_AND_PUBLISHED"
+    ]
     assert len(published_entries) >= 1

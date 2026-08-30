@@ -34,7 +34,7 @@ MALICIOUS_INPUT_PAYLOADS = [
     "<script>alert(1)</script>",
     "payload\x00with_null_byte",
     "A" * 5000,
-    "ðŸ’¥ðŸ”¥â˜ ï¸\u0000\uffff"
+    "ðŸ’¥ðŸ”¥â˜ ï¸\u0000\uffff",
 ]
 
 
@@ -49,7 +49,7 @@ def test_path_traversal_validator():
         "id\\with\\backslash",
         "id with space",
         "id;drop",
-        "A" * 200
+        "A" * 200,
     ]
 
     for attempt in traversal_attempts:
@@ -66,7 +66,7 @@ def test_safe_identifier_acceptance():
         "panos_traffic_v1.0.0",
         "session_12345",
         "error-9876",
-        "10.0.0.1:514"
+        "10.0.0.1:514",
     ]
 
     for valid in valid_ids:
@@ -112,6 +112,7 @@ def test_input_fuzzing_pipeline_resilience(tmp_path):
 def test_payload_size_limit_rejection():
     """Verifies that oversized log payloads are rejected with HTTP 413."""
     from ulpf.packages.config.settings import get_settings
+
     settings = get_settings()
     orig_limit = settings.ULPF_MAX_INGEST_PAYLOAD_BYTES
     try:
@@ -151,7 +152,7 @@ def test_administrative_audit_trail_logging(tmp_path):
         session_id=session.session_id,
         reviewed_by="lead-security-auditor",
         custom_parser_id="sec_alert_parser",
-        version="1.0.0"
+        version="1.0.0",
     )
     assert approval_res["success"] is True
 

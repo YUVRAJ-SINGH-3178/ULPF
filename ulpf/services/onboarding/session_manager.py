@@ -37,7 +37,7 @@ class OnboardingSessionManager:
         field_engine: FieldDiscoveryEngine | None = None,
         persistence_dir: str = "data/onboarding_sessions",
         replay_callback: Callable[[list[str]], None] | None = None,
-        audit_sink: Callable[[AuditRecord], None] | None = None
+        audit_sink: Callable[[AuditRecord], None] | None = None,
     ):
         self.parser_registry = parser_registry
         self.drain_engine = drain_engine or Drain3Engine()
@@ -46,7 +46,7 @@ class OnboardingSessionManager:
         self.persistence_dir.mkdir(parents=True, exist_ok=True)
         self.replay_callback = replay_callback
         self.audit_sink = audit_sink
-        
+
         self._lock = threading.Lock()
         self._sessions: dict[str, OnboardingSession] = {}
         self._compiled_regexes: dict[str, str] = {}
@@ -67,9 +67,13 @@ class OnboardingSessionManager:
                     data = json.load(f)
                     session = OnboardingSession(**data["session"])
                     self._sessions[session.session_id] = session
-                    self._compiled_regexes[session.session_id] = data.get("compiled_regex", "")
+                    self._compiled_regexes[session.session_id] = data.get(
+                        "compiled_regex", ""
+                    )
                     if "rules" in data:
-                        self._rules_by_session[session.session_id] = [ParserRule(**r) for r in data["rules"]]
+                        self._rules_by_session[session.session_id] = [
+                            ParserRule(**r) for r in data["rules"]
+                        ]
             except (json.JSONDecodeError, KeyError, ValueError):
                 pass
 
@@ -99,7 +103,7 @@ class OnboardingSessionManager:
         self,
         raw_payload: str,
         vendor_hint: str | None = None,
-        product_hint: str | None = None
+        product_hint: str | None = None,
     ) -> OnboardingSession:
         """
         Mines the unknown log, clusters with Drain3, extracts candidate fields, and updates/creates session.
@@ -120,8 +124,10 @@ class OnboardingSessionManager:
                 if raw_payload not in existing_session.raw_sample_logs:
                     existing_session.raw_sample_logs.append(raw_payload)
                 # Re-analyze fields with new samples
-                variables, regex_pat, rules = self.field_engine.analyze_template_and_samples(
-                    template_str, existing_session.raw_sample_logs
+                variables, regex_pat, rules = (
+                    self.field_engine.analyze_template_and_samples(
+                        template_str, existing_session.raw_sample_logs
+                    )
                 )
                 existing_session.variables = variables
                 self._compiled_regexes[existing_session.session_id] = regex_pat
@@ -131,8 +137,10 @@ class OnboardingSessionManager:
 
             # Create new session
             session_id = str(uuid.uuid4())
-            variables, regex_pat, rules = self.field_engine.analyze_template_and_samples(
-                template_str, [raw_payload]
+            variables, regex_pat, rules = (
+                self.field_engine.analyze_template_and_samples(
+                    template_str, [raw_payload]
+                )
             )
 
             vendor = vendor_hint or "Custom-Appliance"
@@ -150,7 +158,7 @@ class OnboardingSessionManager:
                 target_class="Network Activity",
                 target_class_uid=4001,
                 status=OnboardingStatus.PENDING,
-                confidence_score=0.88
+                confidence_score=0.88,
             )
 
             self._sessions[session_id] = session
@@ -170,7 +178,9 @@ class OnboardingSessionManager:
                 return None
             res = s.model_dump()
             res["compiled_regex"] = self._compiled_regexes.get(session_id, "")
-            res["rules"] = [r.model_dump() for r in self._rules_by_session.get(session_id, [])]
+            res["rules"] = [
+                r.model_dump() for r in self._rules_by_session.get(session_id, [])
+            ]
             return res
 
     def update_variable_mapping(
@@ -179,7 +189,7 @@ class OnboardingSessionManager:
         var_index: int,
         target_ocsf_field: str,
         inferred_type: str | None = None,
-        transform: str | None = None
+        transform: str | None = None,
     ) -> bool:
         """Updates human-reviewed field mappings for a candidate variable."""
         with self._lock:
@@ -209,7 +219,7 @@ class OnboardingSessionManager:
         session_id: str,
         reviewed_by: str = "security-reviewer",
         custom_parser_id: str | None = None,
-        version: str = "1.0.0"
+        version: str = "1.0.0",
     ) -> dict[str, Any]:
         """
         1. Validates reviewed mappings.
@@ -222,7 +232,10 @@ class OnboardingSessionManager:
             if not session:
                 return {"success": False, "error": f"Session {session_id} not found"}
 
-            parser_id = custom_parser_id or f"{session.vendor.lower()}-{session.product.lower()}-parser"
+            parser_id = (
+                custom_parser_id
+                or f"{session.vendor.lower()}-{session.product.lower()}-parser"
+            )
             regex_pat = self._compiled_regexes.get(session_id, "")
             rules = self._rules_by_session.get(session_id, [])
 
@@ -240,7 +253,9 @@ class OnboardingSessionManager:
                 target_class_uid=session.target_class_uid,
                 status=ParserStatus.ACTIVE,
                 author=reviewed_by,
-                sample_raw=session.raw_sample_logs[0] if session.raw_sample_logs else None
+                sample_raw=session.raw_sample_logs[0]
+                if session.raw_sample_logs
+                else None,
             )
 
             # Register into active ParserRegistry
@@ -266,8 +281,8 @@ class OnboardingSessionManager:
                     "session_id": session_id,
                     "template": session.discovered_template,
                     "rules_count": len(rules),
-                    "replayed_events_count": len(session.raw_sample_logs)
-                }
+                    "replayed_events_count": len(session.raw_sample_logs),
+                },
             )
             self._audit_trail.append(audit)
             self._persist_audit_record(audit)
@@ -282,17 +297,21 @@ class OnboardingSessionManager:
             "version": version,
             "registration_key": reg_key,
             "replayed_events": len(session.raw_sample_logs),
-            "status": "PUBLISHED"
+            "status": "PUBLISHED",
         }
 
-    def reject_session(self, session_id: str, reason: str, reviewed_by: str = "security-reviewer") -> bool:
+    def reject_session(
+        self, session_id: str, reason: str, reviewed_by: str = "security-reviewer"
+    ) -> bool:
         with self._lock:
             session = self._sessions.get(session_id)
             if not session:
                 return False
             session.status = OnboardingStatus.REJECTED
             session.reviewed_by = reviewed_by
-            session.reviewed_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            session.reviewed_at = datetime.datetime.now(
+                datetime.timezone.utc
+            ).isoformat()
             self._persist_session(session)
 
             audit = AuditRecord(
@@ -304,8 +323,8 @@ class OnboardingSessionManager:
                 details={
                     "session_id": session_id,
                     "reason": reason,
-                    "template": session.discovered_template
-                }
+                    "template": session.discovered_template,
+                },
             )
             self._audit_trail.append(audit)
             self._persist_audit_record(audit)
@@ -320,7 +339,10 @@ class OnboardingSessionManager:
         data = {
             "session": session.model_dump(),
             "compiled_regex": self._compiled_regexes.get(session.session_id, ""),
-            "rules": [r.model_dump() for r in self._rules_by_session.get(session.session_id, [])]
+            "rules": [
+                r.model_dump()
+                for r in self._rules_by_session.get(session.session_id, [])
+            ],
         }
         with open(out_file, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)

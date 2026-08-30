@@ -21,7 +21,7 @@ class FortinetParser(BaseParser):
         parser_id: str = "fortinet-fortios-parser",
         vendor: str = "Fortinet",
         product: str = "FortiOS",
-        version: str = "1.0.0"
+        version: str = "1.0.0",
     ):
         super().__init__(
             parser_id=parser_id,
@@ -30,15 +30,24 @@ class FortinetParser(BaseParser):
             format_type=FormatType.SYSLOG_RFC3164,
             version=version,
             target_class="Network Activity",
-            target_class_uid=4001
+            target_class_uid=4001,
         )
         self._leef_parser = LEEFParser()
 
-    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
+    def matches(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> bool:
         lower = raw_payload.lower()
-        return ("devname=" in lower or "fortigate" in lower or "fortios" in lower or (source_meta and source_meta.vendor.lower() == "fortinet"))
+        return (
+            "devname=" in lower
+            or "fortigate" in lower
+            or "fortios" in lower
+            or (source_meta and source_meta.vendor.lower() == "fortinet")
+        )
 
-    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
+    def parse_fields(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> dict[str, Any]:
         raw = raw_payload.strip()
 
         # If LEEF formatted Fortinet event
@@ -51,7 +60,7 @@ class FortinetParser(BaseParser):
         parsed: dict[str, Any] = {
             "device_vendor": "Fortinet",
             "device_product": "FortiOS",
-            "message": raw
+            "message": raw,
         }
 
         # Regex for key=value or key="quoted value"
@@ -85,7 +94,7 @@ class FortinetParser(BaseParser):
                 "47": "GRE",
                 "50": "ESP",
                 "51": "AH",
-                "58": "ICMPv6"
+                "58": "ICMPv6",
             }
             parsed["protocol"] = proto_map.get(proto_val, proto_val.upper())
 
@@ -103,7 +112,15 @@ class FortinetParser(BaseParser):
             if act in ["accept", "allow", "passthrough", "permit"]:
                 parsed["disposition"] = "Allowed"
                 parsed["disposition_id"] = 1
-            elif act in ["deny", "drop", "block", "close", "timeout", "client-rst", "server-rst"]:
+            elif act in [
+                "deny",
+                "drop",
+                "block",
+                "close",
+                "timeout",
+                "client-rst",
+                "server-rst",
+            ]:
                 parsed["disposition"] = "Blocked"
                 parsed["disposition_id"] = 2
             else:

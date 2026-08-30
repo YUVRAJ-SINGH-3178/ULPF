@@ -27,7 +27,9 @@ def test_cisco_asa_inbound_connection_mapped_ip_regression(parser_registry, norm
     src_endpoint.ip and dst_endpoint.ip to resolve to the same address.
     """
     log = "<166>Aug 27 10:15:30 fw-edge-01 %ASA-6-302013: Built inbound TCP connection 9812481 for outside:198.51.100.25/443 (198.51.100.25/443) to inside:10.0.0.5/54321 (10.0.0.5/54321)"
-    meta = SourceMetadata(vendor="Cisco", product="ASA", detected_format=FormatType.SYSLOG_RFC3164)
+    meta = SourceMetadata(
+        vendor="Cisco", product="ASA", detected_format=FormatType.SYSLOG_RFC3164
+    )
 
     parser = parser_registry.find_parser(log, meta)
     assert parser is not None
@@ -55,8 +57,10 @@ def test_cisco_asa_inbound_connection_mapped_ip_regression(parser_registry, norm
 
 
 def test_cisco_asa_deny_and_teardown(parser_registry, normalizer):
-    deny_log = "<164>Aug 27 10:15:31 fw-edge-01 %ASA-4-106023: Deny tcp src dmz:192.168.1.50/443 dst outside:203.0.113.10/51234 by access-group \"OUTSIDE_BLOCK\" [0x12345678, 0x0]"
-    meta = SourceMetadata(vendor="Cisco", product="ASA", detected_format=FormatType.SYSLOG_RFC3164)
+    deny_log = '<164>Aug 27 10:15:31 fw-edge-01 %ASA-4-106023: Deny tcp src dmz:192.168.1.50/443 dst outside:203.0.113.10/51234 by access-group "OUTSIDE_BLOCK" [0x12345678, 0x0]'
+    meta = SourceMetadata(
+        vendor="Cisco", product="ASA", detected_format=FormatType.SYSLOG_RFC3164
+    )
 
     parser = parser_registry.find_parser(deny_log, meta)
     parsed_fields, _ = parser.parse(deny_log, meta)
@@ -84,7 +88,9 @@ def test_cisco_asa_deny_and_teardown(parser_registry, normalizer):
 def test_palo_alto_cef_traffic_and_threat(parser_registry, normalizer):
     # Allow traffic
     allow_log = "CEF:0|Palo Alto Networks|PAN-OS|10.1.0|TRAFFIC|allow|1|src=198.51.100.88 dst=10.0.1.50 spt=61234 dpt=80 proto=TCP act=allow in=1420 out=5820 app=web-browsing cs1=RULE_WEB_PERMIT"
-    meta = SourceMetadata(vendor="Palo Alto Networks", product="PAN-OS", detected_format=FormatType.CEF)
+    meta = SourceMetadata(
+        vendor="Palo Alto Networks", product="PAN-OS", detected_format=FormatType.CEF
+    )
 
     parser = parser_registry.find_parser(allow_log, meta)
     assert parser is not None
@@ -110,7 +116,9 @@ def test_palo_alto_cef_traffic_and_threat(parser_registry, normalizer):
 
 def test_fortinet_kv_and_leef(parser_registry, normalizer):
     kv_log = 'date=2026-08-27 time=10:15:32 devname="FGT-60D" devid="FGT60D0001" logid="0000000013" type="traffic" subtype="forward" level="notice" srcip=192.168.1.100 srcport=54321 dstip=198.51.100.25 dstport=443 proto=6 action="accept" policyid=1 sentbyte=512 rcvdbyte=1024'
-    meta = SourceMetadata(vendor="Fortinet", product="FortiOS", detected_format=FormatType.SYSLOG_RFC3164)
+    meta = SourceMetadata(
+        vendor="Fortinet", product="FortiOS", detected_format=FormatType.SYSLOG_RFC3164
+    )
 
     parser = parser_registry.find_parser(kv_log, meta)
     assert parser is not None
@@ -126,7 +134,9 @@ def test_fortinet_kv_and_leef(parser_registry, normalizer):
 
     # LEEF Fortinet format
     leef_log = "LEEF:2.0|Fortinet|FortiGate|6.4.5|0000000015|\tsrc=185.220.101.5\tdst=10.0.0.5\tsrcPort=44123\tdstPort=22\tproto=TCP\taction=deny\tpolicyid=12"
-    leef_meta = SourceMetadata(vendor="Fortinet", product="FortiGate", detected_format=FormatType.LEEF)
+    leef_meta = SourceMetadata(
+        vendor="Fortinet", product="FortiGate", detected_format=FormatType.LEEF
+    )
     leef_parser = parser_registry.find_parser(leef_log, leef_meta)
     assert leef_parser is not None
     parsed_leef, _ = leef_parser.parse(leef_log, leef_meta)
@@ -140,7 +150,11 @@ def test_fortinet_kv_and_leef(parser_registry, normalizer):
 
 def test_checkpoint_fw1(parser_registry, normalizer):
     drop_log = "<134>Aug 27 10:15:35 chkp-fw01 CheckPoint: action=drop; src=203.0.113.88; dst=10.0.0.1; proto=tcp; s_port=55123; service=23; rule_name=DROP_TELNET;"
-    meta = SourceMetadata(vendor="Checkpoint", product="Firewall-1", detected_format=FormatType.SYSLOG_RFC3164)
+    meta = SourceMetadata(
+        vendor="Checkpoint",
+        product="Firewall-1",
+        detected_format=FormatType.SYSLOG_RFC3164,
+    )
 
     parser = parser_registry.find_parser(drop_log, meta)
     assert parser is not None
@@ -157,7 +171,9 @@ def test_checkpoint_fw1(parser_registry, normalizer):
 
 def test_squid_proxy_access(parser_registry, normalizer):
     denied_log = "1693131336.120    15 192.168.1.100 TCP_DENIED/403 1420 GET http://malicious-domain.xyz/payload.exe - NONE/- text/html"
-    meta = SourceMetadata(vendor="Squid", product="Proxy", detected_format=FormatType.PROPRIETARY)
+    meta = SourceMetadata(
+        vendor="Squid", product="Proxy", detected_format=FormatType.PROPRIETARY
+    )
 
     parser = parser_registry.find_parser(denied_log, meta)
     assert parser is not None
@@ -179,7 +195,9 @@ def test_squid_proxy_access(parser_registry, normalizer):
 
 def test_zeek_conn_telemetry(parser_registry, normalizer):
     conn_log = '{"ts":1693131334.5,"uid":"C1234567890","id.orig_h":"192.168.1.105","id.orig_p":49152,"id.resp_h":"10.0.0.10","id.resp_p":5432,"proto":"tcp","service":"postgresql","duration":0.045,"orig_bytes":1024,"resp_bytes":4096,"conn_state":"SF"}'
-    meta = SourceMetadata(vendor="Zeek", product="Network-Monitor", detected_format=FormatType.JSON)
+    meta = SourceMetadata(
+        vendor="Zeek", product="Network-Monitor", detected_format=FormatType.JSON
+    )
 
     parser = parser_registry.find_parser(conn_log, meta)
     assert parser is not None
@@ -196,7 +214,9 @@ def test_zeek_conn_telemetry(parser_registry, normalizer):
 
 def test_suricata_eve_alert_and_http(parser_registry, normalizer):
     alert_log = '{"timestamp":"2026-08-27T10:15:33.123456+0000","flow_id":87654321,"event_type":"alert","src_ip":"185.220.101.5","src_port":44123,"dest_ip":"10.0.0.5","dest_port":22,"proto":"TCP","alert":{"action":"blocked","gid":1,"signature_id":2001219,"rev":1,"signature":"ET SCAN Potential SSH Brute Force Detected","category":"Attempted Information Leak","severity":1}}'
-    meta = SourceMetadata(vendor="Suricata", product="EVE-IDS", detected_format=FormatType.JSON)
+    meta = SourceMetadata(
+        vendor="Suricata", product="EVE-IDS", detected_format=FormatType.JSON
+    )
 
     parser = parser_registry.find_parser(alert_log, meta)
     assert parser is not None
@@ -225,7 +245,7 @@ def test_unmapped_fields_preservation(normalizer):
         "dst_ip": "10.0.0.2",
         "protocol": "TCP",
         "vendor_proprietary_tag_x": "CRITICAL_SESSION_VAL",
-        "custom_asic_counter": 98124
+        "custom_asic_counter": 98124,
     }
     meta = SourceMetadata(vendor="CustomVendor", product="CustomAppliance")
     ocsf = normalizer.normalize(parsed_fields, meta, "raw text", "event-test-unmap")

@@ -40,10 +40,7 @@ class ErrorAndReplayQueue:
                 pass
 
     def record_failure(
-        self,
-        envelope: EventEnvelope,
-        error_stage: str,
-        errors: list[str]
+        self, envelope: EventEnvelope, error_stage: str, errors: list[str]
     ) -> str:
         """Records an event processing failure."""
         error_id = str(uuid.uuid4())
@@ -56,7 +53,7 @@ class ErrorAndReplayQueue:
             "errors": errors,
             "recorded_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "status": "UNRESOLVED",  # UNRESOLVED, REPLAYED, DISMISSED
-            "replay_count": 0
+            "replay_count": 0,
         }
 
         with self._lock:
@@ -84,8 +81,10 @@ class ErrorAndReplayQueue:
                 return False
             record["status"] = "REPLAYED"
             record["replay_count"] += 1
-            record["last_replayed_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-            
+            record["last_replayed_at"] = datetime.datetime.now(
+                datetime.timezone.utc
+            ).isoformat()
+
             out_file = self.persistence_dir / f"{error_id}.json"
             with open(out_file, "w", encoding="utf-8") as f:
                 json.dump(record, f, indent=2)

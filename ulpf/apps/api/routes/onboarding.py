@@ -43,29 +43,32 @@ def list_onboarding_sessions(user: dict[str, Any] = Depends(get_current_user)):
 
 @router.get("/{session_id}", response_model=dict[str, Any])
 def get_onboarding_session(
-    session_id: str,
-    user: dict[str, Any] = Depends(get_current_user)
+    session_id: str, user: dict[str, Any] = Depends(get_current_user)
 ):
     """Retrieves session details, discovered template, variables, sample values, and OCSF suggestions."""
     validate_safe_identifier(session_id, "session_id")
     orch = get_orchestrator()
     session = orch.onboarding_manager.get_session(session_id)
     if not session:
-        raise HTTPException(status_code=404, detail=f"Onboarding session {session_id} not found")
+        raise HTTPException(
+            status_code=404, detail=f"Onboarding session {session_id} not found"
+        )
     return session
 
 
 @router.post("/mine", response_model=dict[str, Any])
 def mine_unknown_log_manually(
     req: MineRawLogRequest,
-    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.REVIEWER, UserRole.OPERATOR]))
+    user: dict[str, Any] = Depends(
+        require_roles([UserRole.ADMIN, UserRole.REVIEWER, UserRole.OPERATOR])
+    ),
 ):
     """Feeds an unseen raw log directly to the Drain3 miner to trigger template discovery."""
     orch = get_orchestrator()
     session = orch.onboarding_manager.process_unknown_log(
         raw_payload=req.raw_payload,
         vendor_hint=req.vendor_hint,
-        product_hint=req.product_hint
+        product_hint=req.product_hint,
     )
     return session.model_dump()
 
@@ -74,7 +77,7 @@ def mine_unknown_log_manually(
 def update_variable_mapping(
     session_id: str,
     req: UpdateMappingRequest,
-    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.REVIEWER]))
+    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.REVIEWER])),
 ):
     """
     Human-in-the-Loop Override:
@@ -87,18 +90,25 @@ def update_variable_mapping(
         var_index=req.var_index,
         target_ocsf_field=req.target_ocsf_field,
         inferred_type=req.inferred_type,
-        transform=req.transform
+        transform=req.transform,
     )
     if not success:
-        raise HTTPException(status_code=404, detail="Session or variable index not found")
-    return {"status": "success", "session_id": session_id, "var_index": req.var_index, "mapped_to": req.target_ocsf_field}
+        raise HTTPException(
+            status_code=404, detail="Session or variable index not found"
+        )
+    return {
+        "status": "success",
+        "session_id": session_id,
+        "var_index": req.var_index,
+        "mapped_to": req.target_ocsf_field,
+    }
 
 
 @router.post("/{session_id}/approve", response_model=dict[str, Any])
 def approve_and_publish_session(
     session_id: str,
     req: ApproveSessionRequest = Body(...),
-    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.REVIEWER]))
+    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.REVIEWER])),
 ):
     """
     Human Approval & Publish:
@@ -115,7 +125,7 @@ def approve_and_publish_session(
         session_id=session_id,
         reviewed_by=user.get("username", "security-reviewer"),
         custom_parser_id=req.custom_parser_id,
-        version=req.version or "1.0.0"
+        version=req.version or "1.0.0",
     )
     if not res.get("success"):
         raise HTTPException(status_code=400, detail=res.get("error", "Approval failed"))
@@ -126,7 +136,7 @@ def approve_and_publish_session(
 def reject_session(
     session_id: str,
     reason: str = Body(..., embed=True),
-    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.REVIEWER]))
+    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.REVIEWER])),
 ):
     """Rejects an onboarding session."""
     validate_safe_identifier(session_id, "session_id")
@@ -134,7 +144,7 @@ def reject_session(
     success = orch.onboarding_manager.reject_session(
         session_id=session_id,
         reason=reason,
-        reviewed_by=user.get("username", "security-reviewer")
+        reviewed_by=user.get("username", "security-reviewer"),
     )
     if not success:
         raise HTTPException(status_code=404, detail="Session not found")

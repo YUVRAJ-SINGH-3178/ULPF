@@ -12,7 +12,7 @@ from ulpf.packages.schemas.models import (
     ParsingMetadata,
     SourceMetadata,
 )
-from ulpf.services.storage.raw_store import ImmutableRawStore
+from ulpf.services.storage.raw_store import BaseRawStore, get_raw_store
 
 
 class EnvelopeFactory:
@@ -20,8 +20,8 @@ class EnvelopeFactory:
     Constructs immutable event envelopes and immediately archives the raw payload into storage.
     """
 
-    def __init__(self, raw_store: ImmutableRawStore | None = None):
-        self.raw_store = raw_store or ImmutableRawStore()
+    def __init__(self, raw_store: BaseRawStore | None = None):
+        self.raw_store = raw_store or get_raw_store()
 
     def create_envelope(
         self,
@@ -30,7 +30,7 @@ class EnvelopeFactory:
         client_ip: str | None = None,
         collector_host: str = "ulpf-node-01",
         vendor_hint: str | None = None,
-        product_hint: str | None = None
+        product_hint: str | None = None,
     ) -> EventEnvelope:
         """
         1. Generates unique event_id (UUIDv4)
@@ -48,14 +48,14 @@ class EnvelopeFactory:
             detected_format=FormatType.UNKNOWN,
             collector_host=collector_host,
             client_ip=client_ip,
-            transport=transport
+            transport=transport,
         )
 
         # Store raw payload in immutable write-once store
         raw_ref = self.raw_store.store_raw(
             raw_payload=raw_payload,
             event_id=event_id,
-            source_meta=source_meta.model_dump()
+            source_meta=source_meta.model_dump(),
         )
 
         traceability = {
@@ -64,7 +64,7 @@ class EnvelopeFactory:
             "raw_storage_uri": f"{raw_ref.bucket}/{raw_ref.object_key}",
             "ingest_timestamp": ingest_time,
             "byte_length": raw_ref.byte_length,
-            "provenance_chain": ["INGESTION_RECEIVED", "RAW_ARCHIVED_SHA256"]
+            "provenance_chain": ["INGESTION_RECEIVED", "RAW_ARCHIVED_SHA256"],
         }
 
         envelope = EventEnvelope(
@@ -74,7 +74,7 @@ class EnvelopeFactory:
             raw=raw_ref,
             parsing=ParsingMetadata(),
             ocsf=None,
-            traceability=traceability
+            traceability=traceability,
         )
 
         return envelope

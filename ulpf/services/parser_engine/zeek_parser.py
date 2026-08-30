@@ -20,7 +20,7 @@ class ZeekConnParser(BaseParser):
         parser_id: str = "zeek-conn-parser",
         vendor: str = "Zeek",
         product: str = "Network-Monitor",
-        version: str = "1.0.0"
+        version: str = "1.0.0",
     ):
         super().__init__(
             parser_id=parser_id,
@@ -29,16 +29,24 @@ class ZeekConnParser(BaseParser):
             format_type=FormatType.JSON,
             version=version,
             target_class="Network Activity",
-            target_class_uid=4001
+            target_class_uid=4001,
         )
 
-    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
+    def matches(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> bool:
         raw = raw_payload.strip()
         if raw.startswith("{") and raw.endswith("}"):
-            return ("id.orig_h" in raw or "id.resp_h" in raw or ("ts" in raw and "conn_state" in raw))
+            return (
+                "id.orig_h" in raw
+                or "id.resp_h" in raw
+                or ("ts" in raw and "conn_state" in raw)
+            )
         return False
 
-    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
+    def parse_fields(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> dict[str, Any]:
         data = json.loads(raw_payload.strip())
         if not isinstance(data, dict):
             raise ValueError("Zeek payload is not a JSON object")
@@ -70,7 +78,7 @@ class ZeekConnParser(BaseParser):
             "disposition_id": 1,
             "severity": "Informational",
             "severity_id": 1,
-            "message": f"Zeek connection {orig_h}:{orig_p} -> {resp_h}:{resp_p}"
+            "message": f"Zeek connection {orig_h}:{orig_p} -> {resp_h}:{resp_p}",
         }
 
         # Check for rejected connection state (e.g. REJ, RSTO, RSTR)

@@ -19,7 +19,7 @@ class Drain3Engine:
     def __init__(self, persistence_dir: str = "data/drain3_state"):
         os.makedirs(persistence_dir, exist_ok=True)
         self.persistence_dir = persistence_dir
-        
+
         # Configure Drain3 with cybersecurity domain maskers
         config = TemplateMinerConfig()
         config.drain_depth = 4
@@ -29,11 +29,17 @@ class Drain3Engine:
         config.mask_suffix = ">"
         config.masking_instructions = [
             MaskingInstruction(r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b", "IP"),
-            MaskingInstruction(r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b", "UUID"),
+            MaskingInstruction(
+                r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b",
+                "UUID",
+            ),
             MaskingInstruction(r"\b[0-9a-fA-F]{32,64}\b", "HEX"),
-            MaskingInstruction(r"\b\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?\b", "TIMESTAMP"),
+            MaskingInstruction(
+                r"\b\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?\b",
+                "TIMESTAMP",
+            ),
             MaskingInstruction(r'"[^"]*"', "STR"),
-            MaskingInstruction(r"\b\d+\b", "NUM")
+            MaskingInstruction(r"\b\d+\b", "NUM"),
         ]
 
         self.miner = TemplateMiner(config=config)
@@ -44,11 +50,17 @@ class Drain3Engine:
         """
         cleaned = raw_message.strip()
         result = self.miner.add_log_message(cleaned)
-        
-        template = result.get("template_mined") if isinstance(result, dict) else str(result)
+
+        template = (
+            result.get("template_mined") if isinstance(result, dict) else str(result)
+        )
         cluster_id = result.get("cluster_id") if isinstance(result, dict) else 1
-        change_type = result.get("change_type", "none") if isinstance(result, dict) else "cluster_created"
-        
+        change_type = (
+            result.get("change_type", "none")
+            if isinstance(result, dict)
+            else "cluster_created"
+        )
+
         cluster = self.miner.drain.id_to_cluster.get(cluster_id)
         cluster_size = cluster.size if cluster else 1
         sample_messages = [cleaned]
@@ -58,7 +70,7 @@ class Drain3Engine:
             "template": template,
             "cluster_size": cluster_size,
             "change_type": change_type,
-            "sample_message": cleaned
+            "sample_message": cleaned,
         }
 
     def match_template(self, raw_message: str) -> dict[str, Any] | None:
@@ -71,6 +83,6 @@ class Drain3Engine:
                 "cluster_id": cluster.cluster_id,
                 "template": cluster.get_template(),
                 "cluster_size": cluster.size,
-                "parameters": params or []
+                "parameters": params or [],
             }
         return None

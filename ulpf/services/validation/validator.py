@@ -13,7 +13,7 @@ from ulpf.packages.schemas.models import (
     ParsingMetadata,
     VerificationResult,
 )
-from ulpf.services.storage.raw_store import ImmutableRawStore
+from ulpf.services.storage.raw_store import BaseRawStore
 
 
 class PipelineValidator:
@@ -21,7 +21,7 @@ class PipelineValidator:
     Multi-stage validator enforcing data contracts across the entire ingestion and normalization pipeline.
     """
 
-    def __init__(self, raw_store: ImmutableRawStore):
+    def __init__(self, raw_store: BaseRawStore):
         self.raw_store = raw_store
 
     def validate_ingestion(self, envelope: EventEnvelope) -> tuple[bool, list[str]]:
@@ -31,19 +31,25 @@ class PipelineValidator:
             errors.append("Ingestion Error: Raw payload is empty")
 
         if envelope.raw.byte_length > 10 * 1024 * 1024:  # 10 MB limit
-            errors.append(f"Ingestion Error: Raw payload exceeds max size (size: {envelope.raw.byte_length} bytes)")
+            errors.append(
+                f"Ingestion Error: Raw payload exceeds max size (size: {envelope.raw.byte_length} bytes)"
+            )
 
         try:
             uuid.UUID(envelope.event_id)
         except ValueError:
-            errors.append(f"Ingestion Error: Invalid event_id format '{envelope.event_id}' (must be UUIDv4)")
+            errors.append(
+                f"Ingestion Error: Invalid event_id format '{envelope.event_id}' (must be UUIDv4)"
+            )
 
         if not envelope.raw.sha256 or len(envelope.raw.sha256) != 64:
             errors.append("Ingestion Error: Invalid or missing SHA-256 hash")
 
         return len(errors) == 0, errors
 
-    def validate_parsing(self, parsed_fields: dict[str, Any], meta: ParsingMetadata) -> tuple[bool, list[str]]:
+    def validate_parsing(
+        self, parsed_fields: dict[str, Any], meta: ParsingMetadata
+    ) -> tuple[bool, list[str]]:
         """Stage 2: Validates parser extraction outputs and parser errors."""
         errors = list(meta.errors)
         if not parsed_fields:
@@ -55,7 +61,16 @@ class PipelineValidator:
         errors = []
 
         # Required root fields
-        required_fields = ["class_uid", "category_uid", "class_name", "category_name", "severity_id", "status_id", "time", "metadata"]
+        required_fields = [
+            "class_uid",
+            "category_uid",
+            "class_name",
+            "category_name",
+            "severity_id",
+            "status_id",
+            "time",
+            "metadata",
+        ]
         for f in required_fields:
             if f not in ocsf_doc:
                 errors.append(f"OCSF Validation Error: Missing mandatory field '{f}'")
@@ -63,25 +78,35 @@ class PipelineValidator:
         # Enum validations
         if "severity_id" in ocsf_doc:
             if ocsf_doc["severity_id"] not in [0, 1, 2, 3, 4, 5, 6, 99]:
-                errors.append(f"OCSF Validation Error: Invalid severity_id '{ocsf_doc['severity_id']}'")
+                errors.append(
+                    f"OCSF Validation Error: Invalid severity_id '{ocsf_doc['severity_id']}'"
+                )
 
         if "disposition_id" in ocsf_doc and ocsf_doc["disposition_id"] is not None:
             if ocsf_doc["disposition_id"] not in [0, 1, 2, 3, 4, 5, 6, 7, 99]:
-                errors.append(f"OCSF Validation Error: Invalid disposition_id '{ocsf_doc['disposition_id']}'")
+                errors.append(
+                    f"OCSF Validation Error: Invalid disposition_id '{ocsf_doc['disposition_id']}'"
+                )
 
         # Timestamp validation
         if "time" in ocsf_doc:
             if not isinstance(ocsf_doc["time"], (int, float)) or ocsf_doc["time"] <= 0:
-                errors.append(f"OCSF Validation Error: Invalid epoch timestamp '{ocsf_doc['time']}'")
+                errors.append(
+                    f"OCSF Validation Error: Invalid epoch timestamp '{ocsf_doc['time']}'"
+                )
 
         # Metadata validation
         meta = ocsf_doc.get("metadata", {})
         if not isinstance(meta, dict) or "product" not in meta:
-            errors.append("OCSF Validation Error: 'metadata.product' object is required")
+            errors.append(
+                "OCSF Validation Error: 'metadata.product' object is required"
+            )
         else:
             prod = meta.get("product", {})
             if not prod.get("vendor_name"):
-                errors.append("OCSF Validation Error: 'metadata.product.vendor_name' is required")
+                errors.append(
+                    "OCSF Validation Error: 'metadata.product.vendor_name' is required"
+                )
 
         # Endpoints validation
         for ep_key in ["src_endpoint", "dst_endpoint"]:
@@ -89,7 +114,9 @@ class PipelineValidator:
                 ep = ocsf_doc[ep_key]
                 if "port" in ep and ep["port"] is not None:
                     if not (1 <= ep["port"] <= 65535):
-                        errors.append(f"OCSF Validation Error: Port out of range in {ep_key}: {ep['port']}")
+                        errors.append(
+                            f"OCSF Validation Error: Port out of range in {ep_key}: {ep['port']}"
+                        )
                 if ep.get("ip"):
                     # Clean and check IP format
                     ip_str = str(ep["ip"]).strip()
@@ -97,8 +124,12 @@ class PipelineValidator:
                         ipaddress.ip_address(ip_str)
                     except ValueError:
                         # Allow hostname or string if not pure IP, but check if invalid format
-                        if re.match(r"^[0-9.]+$", ip_str) and not re.match(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$", ip_str):
-                            errors.append(f"OCSF Validation Error: Malformed IPv4 address in {ep_key}: '{ip_str}'")
+                        if re.match(r"^[0-9.]+$", ip_str) and not re.match(
+                            r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$", ip_str
+                        ):
+                            errors.append(
+                                f"OCSF Validation Error: Malformed IPv4 address in {ep_key}: '{ip_str}'"
+                            )
 
         return len(errors) == 0, errors
 

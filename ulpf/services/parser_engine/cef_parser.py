@@ -21,7 +21,7 @@ class CEFParser(BaseParser):
         parser_id: str = "cef-standard-parser",
         vendor: str = "ArcSight",
         product: str = "CEF-Engine",
-        version: str = "1.0.0"
+        version: str = "1.0.0",
     ):
         super().__init__(
             parser_id=parser_id,
@@ -30,13 +30,17 @@ class CEFParser(BaseParser):
             format_type=FormatType.CEF,
             version=version,
             target_class="Network Activity",
-            target_class_uid=4001
+            target_class_uid=4001,
         )
 
-    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
+    def matches(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> bool:
         return "CEF:" in raw_payload
 
-    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
+    def parse_fields(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> dict[str, Any]:
         raw = raw_payload.strip()
         cef_start = raw.find("CEF:")
         if cef_start == -1:
@@ -71,7 +75,9 @@ class CEFParser(BaseParser):
         parts.append("".join(current))
 
         if len(parts) < 8:
-            raise ValueError(f"Malformed CEF header: expected 7 pipes, found {len(parts)-1}")
+            raise ValueError(
+                f"Malformed CEF header: expected 7 pipes, found {len(parts) - 1}"
+            )
 
         prefix_ver = parts[0]  # CEF:0 or CEF:1
         version_num = prefix_ver.replace("CEF:", "").strip()
@@ -91,7 +97,7 @@ class CEFParser(BaseParser):
             "device_event_class_id": class_id,
             "event_name": name,
             "severity_raw": severity,
-            "message": name
+            "message": name,
         }
 
         # Parse Extension key=value pairs
@@ -108,9 +114,9 @@ class CEFParser(BaseParser):
         """Parses CEF extension key-value pairs with tokenization."""
         kv_pairs: dict[str, Any] = {}
         # Match pattern: key=value pairs where key is word chars
-        pattern = re.compile(r'([a-zA-Z0-9_]+)=')
+        pattern = re.compile(r"([a-zA-Z0-9_]+)=")
         matches = list(pattern.finditer(ext_str))
-        
+
         for i, match in enumerate(matches):
             key = match.group(1)
             start_val = match.end()
@@ -118,10 +124,15 @@ class CEFParser(BaseParser):
                 end_val = matches[i + 1].start()
             else:
                 end_val = len(ext_str)
-            
+
             val = ext_str[start_val:end_val].strip()
             # Clean trailing spaces and unescape \=, \|, \\
-            val = val.replace(r"\=", "=").replace(r"\|", "|").replace(r"\\", "\\").replace(r"\n", "\n")
+            val = (
+                val.replace(r"\=", "=")
+                .replace(r"\|", "|")
+                .replace(r"\\", "\\")
+                .replace(r"\n", "\n")
+            )
             kv_pairs[key] = val
 
         return kv_pairs
@@ -178,7 +189,18 @@ class CEFParser(BaseParser):
         if act_raw in ["allow", "allowed", "permit", "permitted", "accept", "pass"]:
             d["disposition"] = "Allowed"
             d["disposition_id"] = 1
-        elif act_raw in ["deny", "denied", "drop", "dropped", "block", "blocked", "reset", "reset-both", "reset-client", "reset-server"]:
+        elif act_raw in [
+            "deny",
+            "denied",
+            "drop",
+            "dropped",
+            "block",
+            "blocked",
+            "reset",
+            "reset-both",
+            "reset-client",
+            "reset-server",
+        ]:
             d["disposition"] = "Blocked"
             d["disposition_id"] = 2
         elif not d.get("disposition"):

@@ -30,7 +30,7 @@ class BaseParser(ABC):
         version: str = "1.0.0",
         target_class: str = "Network Activity",
         target_class_uid: int = 4001,
-        status: ParserStatus = ParserStatus.ACTIVE
+        status: ParserStatus = ParserStatus.ACTIVE,
     ):
         self.parser_id = parser_id
         self.vendor = vendor
@@ -42,14 +42,20 @@ class BaseParser(ABC):
         self.status = status
 
     @abstractmethod
-    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
+    def matches(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> bool:
         """Determines if this parser can handle the given raw event."""
 
     @abstractmethod
-    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
+    def parse_fields(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> dict[str, Any]:
         """Extracts key-value fields from the raw payload."""
 
-    def parse(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> tuple[dict[str, Any], ParsingMetadata]:
+    def parse(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> tuple[dict[str, Any], ParsingMetadata]:
         """
         Executes parsing with performance measurement and metadata generation.
         """
@@ -71,7 +77,7 @@ class BaseParser(ABC):
             confidence=1.0 if not errors else 0.5,
             parse_duration_ms=round(duration_ms, 3),
             unparsed_fields={},
-            errors=errors
+            errors=errors,
         )
 
         return parsed, meta

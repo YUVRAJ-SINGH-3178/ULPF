@@ -159,8 +159,14 @@ class OCSFEventBase(BaseModel):
     status: str = "Success"
     disposition_id: int | None = DispositionId.ALLOWED.value
     disposition: str | None = "Allowed"
-    time: int = Field(default_factory=lambda: int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000))
-    time_dt: str = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
+    time: int = Field(
+        default_factory=lambda: int(
+            datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000
+        )
+    )
+    time_dt: str = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat()
+    )
     message: str | None = None
     metadata: OCSFMetadata
     raw_data: str | None = None
@@ -200,7 +206,9 @@ class OCSFSecurityFinding(OCSFEventBase):
 # The Universal Normalized Event Envelope
 class EventEnvelope(BaseModel):
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    ingest_timestamp: str = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
+    ingest_timestamp: str = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat()
+    )
     source: SourceMetadata = Field(default_factory=SourceMetadata)
     raw: RawStorageRef
     parsing: ParsingMetadata = Field(default_factory=ParsingMetadata)
@@ -228,8 +236,12 @@ class ParserDefinition(BaseModel):
     target_class: str = "Network Activity"
     target_class_uid: int = 4001
     status: ParserStatus = ParserStatus.ACTIVE
-    created_at: str = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
-    updated_at: str = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
+    created_at: str = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat()
+    )
+    updated_at: str = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat()
+    )
     author: str = "system"
     sample_raw: str | None = None
 
@@ -257,7 +269,9 @@ class OnboardingSession(BaseModel):
     target_class_uid: int = 4001
     status: OnboardingStatus = OnboardingStatus.PENDING
     confidence_score: float = 0.85
-    created_at: str = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
+    created_at: str = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat()
+    )
     reviewed_by: str | None = None
     reviewed_at: str | None = None
     published_parser_id: str | None = None
@@ -272,14 +286,18 @@ class VerificationResult(BaseModel):
     computed_sha256: str
     byte_length: int
     tampered: bool
-    checked_at: str = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
+    checked_at: str = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat()
+    )
     details: str
 
 
 # Audit Log Model
 class AuditRecord(BaseModel):
     audit_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    timestamp: str = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
+    timestamp: str = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat()
+    )
     user: str
     role: str
     action: str  # e.g. "PARSER_PUBLISHED", "ONBOARDING_APPROVED", "REPLAY_TRIGGERED"

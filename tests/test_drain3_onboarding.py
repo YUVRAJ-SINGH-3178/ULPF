@@ -42,7 +42,7 @@ def test_unknown_log_onboarding_and_replay_flow(orchestrator):
         session_id=session["session_id"],
         reviewed_by="test-reviewer",
         custom_parser_id="appliance-fw-custom-parser",
-        version="1.0.0"
+        version="1.0.0",
     )
     assert pub_res["success"] is True
     assert pub_res["parser_id"] == "appliance-fw-custom-parser"

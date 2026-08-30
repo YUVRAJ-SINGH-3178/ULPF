@@ -90,7 +90,7 @@ SEVERITY_NAMES: dict[int, str] = {
     4: "High",
     5: "Critical",
     6: "Fatal",
-    99: "Other"
+    99: "Other",
 }
 
 DISPOSITION_NAMES: dict[int, str] = {
@@ -102,22 +102,17 @@ DISPOSITION_NAMES: dict[int, str] = {
     5: "Isolated",
     6: "Dropped",
     7: "Reset",
-    99: "Other"
+    99: "Other",
 }
 
-STATUS_NAMES: dict[int, str] = {
-    0: "Unknown",
-    1: "Success",
-    2: "Failure",
-    99: "Other"
-}
+STATUS_NAMES: dict[int, str] = {0: "Unknown", 1: "Success", 2: "Failure", 99: "Other"}
 
 DIRECTION_NAMES: dict[int, str] = {
     0: "Unknown",
     1: "Inbound",
     2: "Outbound",
     3: "Lateral",
-    99: "Other"
+    99: "Other",
 }
 
 PROTOCOL_NUMBERS: dict[str, int] = {
@@ -137,7 +132,7 @@ PROTOCOL_NUMBERS: dict[str, int] = {
     "AH": 51,
     "ICMPV6": 58,
     "OSPF": 89,
-    "SCTP": 132
+    "SCTP": 132,
 }
 
 
@@ -153,6 +148,6 @@ def normalize_protocol(proto: str | None) -> tuple[str, int]:
             if num == p_num:
                 return name, p_num
         return f"PROTO-{p_num}", p_num
-    
+
     p_num = PROTOCOL_NUMBERS.get(p_str, 6)
     return p_str, p_num

@@ -21,7 +21,7 @@ class SquidProxyParser(BaseParser):
         parser_id: str = "squid-proxy-parser",
         vendor: str = "Squid",
         product: str = "Proxy",
-        version: str = "1.0.0"
+        version: str = "1.0.0",
     ):
         super().__init__(
             parser_id=parser_id,
@@ -30,16 +30,24 @@ class SquidProxyParser(BaseParser):
             format_type=FormatType.PROPRIETARY,
             version=version,
             target_class="Network Activity",
-            target_class_uid=4001
+            target_class_uid=4001,
         )
         self.pattern = re.compile(
             r"^(\d+\.\d+)\s+(\d+)\s+([0-9.]+)\s+([A-Z_]+)/(\d{3})\s+(\d+)\s+([A-Z]+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)$"
         )
 
-    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
-        return bool(self.pattern.match(raw_payload.strip())) or "TCP_DENIED/" in raw_payload or "TCP_MISS/" in raw_payload
+    def matches(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> bool:
+        return (
+            bool(self.pattern.match(raw_payload.strip()))
+            or "TCP_DENIED/" in raw_payload
+            or "TCP_MISS/" in raw_payload
+        )
 
-    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
+    def parse_fields(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> dict[str, Any]:
         raw = raw_payload.strip()
         m = self.pattern.match(raw)
         peer_info = ""
@@ -50,7 +58,9 @@ class SquidProxyParser(BaseParser):
                 epoch_ts = parts[0]
                 elapsed = parts[1]
                 client_ip = parts[2]
-                cache_status, http_code = parts[3].split("/") if "/" in parts[3] else (parts[3], "200")
+                cache_status, http_code = (
+                    parts[3].split("/") if "/" in parts[3] else (parts[3], "200")
+                )
                 bytes_trans = parts[4]
                 method = parts[5]
                 url = parts[6]
@@ -74,7 +84,11 @@ class SquidProxyParser(BaseParser):
         except (ValueError, TypeError):
             status_code = 200
 
-        disposition = "Blocked" if "DENIED" in cache_status or status_code in [403, 401] else "Allowed"
+        disposition = (
+            "Blocked"
+            if "DENIED" in cache_status or status_code in [403, 401]
+            else "Allowed"
+        )
         disposition_id = 2 if disposition == "Blocked" else 1
 
         parsed: dict[str, Any] = {
@@ -94,7 +108,7 @@ class SquidProxyParser(BaseParser):
             "disposition_id": disposition_id,
             "severity": "Medium" if disposition == "Blocked" else "Informational",
             "severity_id": 3 if disposition == "Blocked" else 1,
-            "message": f"Squid {method} {url} -> {http_code} ({cache_status})"
+            "message": f"Squid {method} {url} -> {http_code} ({cache_status})",
         }
 
         # Extract host and port from URL if present

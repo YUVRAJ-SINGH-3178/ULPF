@@ -1,6 +1,7 @@
 """
 Ingestion subsystem exports
 """
+
 from ulpf.services.ingestion.listeners import (
     FileBatchIngestor,
     TCPSyslogListener,
@@ -12,5 +13,5 @@ __all__ = [
     "EnvelopeFactory",
     "FileBatchIngestor",
     "TCPSyslogListener",
-    "UDPSyslogListener"
+    "UDPSyslogListener",
 ]

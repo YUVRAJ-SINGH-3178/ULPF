@@ -20,7 +20,7 @@ class CheckpointParser(BaseParser):
         parser_id: str = "checkpoint-fw1-parser",
         vendor: str = "Checkpoint",
         product: str = "Firewall-1",
-        version: str = "1.0.0"
+        version: str = "1.0.0",
     ):
         super().__init__(
             parser_id=parser_id,
@@ -29,20 +29,29 @@ class CheckpointParser(BaseParser):
             format_type=FormatType.SYSLOG_RFC3164,
             version=version,
             target_class="Network Activity",
-            target_class_uid=4001
+            target_class_uid=4001,
         )
 
-    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
+    def matches(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> bool:
         lower = raw_payload.lower()
-        return ("checkpoint" in lower or "fw1" in lower or "log_uid=" in lower or (source_meta and source_meta.vendor.lower() == "checkpoint"))
+        return (
+            "checkpoint" in lower
+            or "fw1" in lower
+            or "log_uid=" in lower
+            or (source_meta and source_meta.vendor.lower() == "checkpoint")
+        )
 
-    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
+    def parse_fields(
+        self, raw_payload: str, source_meta: SourceMetadata | None = None
+    ) -> dict[str, Any]:
         raw = raw_payload.strip()
 
         parsed: dict[str, Any] = {
             "device_vendor": "Checkpoint",
             "device_product": "Firewall-1",
-            "message": raw
+            "message": raw,
         }
 
         # Checkpoint uses key: value or key="value" or key=value;
