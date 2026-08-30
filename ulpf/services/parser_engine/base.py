@@ -3,15 +3,15 @@ Base Parser Architecture & Interface
 All parsers implement standard parsing contracts and metadata generation.
 """
 
-from abc import ABC, abstractmethod
-from typing import Dict, Any, Tuple, Optional
 import time
+from abc import ABC, abstractmethod
+from typing import Any
 
 from ulpf.packages.schemas.models import (
     FormatType,
     ParserStatus,
+    ParsingMetadata,
     SourceMetadata,
-    ParsingMetadata
 )
 
 
@@ -42,16 +42,14 @@ class BaseParser(ABC):
         self.status = status
 
     @abstractmethod
-    def matches(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> bool:
+    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
         """Determines if this parser can handle the given raw event."""
-        pass
 
     @abstractmethod
-    def parse_fields(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> Dict[str, Any]:
+    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
         """Extracts key-value fields from the raw payload."""
-        pass
 
-    def parse(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> Tuple[Dict[str, Any], ParsingMetadata]:
+    def parse(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> tuple[dict[str, Any], ParsingMetadata]:
         """
         Executes parsing with performance measurement and metadata generation.
         """
@@ -61,7 +59,7 @@ class BaseParser(ABC):
         try:
             parsed = self.parse_fields(raw_payload, source_meta)
         except Exception as e:
-            errors.append(f"Parsing error in {self.parser_id}: {str(e)}")
+            errors.append(f"Parsing error in {self.parser_id}: {e!s}")
 
         duration_ms = (time.perf_counter() - start_t) * 1000.0
 

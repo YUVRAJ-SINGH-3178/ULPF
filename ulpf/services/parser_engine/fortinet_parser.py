@@ -4,7 +4,7 @@ Parses FortiGate / FortiOS Key-Value and LEEF structured security logs.
 """
 
 import re
-from typing import Dict, Any, Optional
+from typing import Any
 
 from ulpf.packages.schemas.models import FormatType, SourceMetadata
 from ulpf.services.parser_engine.base import BaseParser
@@ -34,11 +34,11 @@ class FortinetParser(BaseParser):
         )
         self._leef_parser = LEEFParser()
 
-    def matches(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> bool:
+    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
         lower = raw_payload.lower()
         return ("devname=" in lower or "fortigate" in lower or "fortios" in lower or (source_meta and source_meta.vendor.lower() == "fortinet"))
 
-    def parse_fields(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> Dict[str, Any]:
+    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
         raw = raw_payload.strip()
 
         # If LEEF formatted Fortinet event
@@ -48,7 +48,7 @@ class FortinetParser(BaseParser):
             leef_fields["device_product"] = "FortiOS"
             return leef_fields
 
-        parsed: Dict[str, Any] = {
+        parsed: dict[str, Any] = {
             "device_vendor": "Fortinet",
             "device_product": "FortiOS",
             "message": raw

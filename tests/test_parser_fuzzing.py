@@ -5,11 +5,12 @@ malformed, truncated, null-byte injected, or adversarially crafted payloads.
 """
 
 import pytest
-from hypothesis import given, strategies as st, settings, HealthCheck
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
 
+from ulpf.packages.schemas.models import EventEnvelope
 from ulpf.services.parser_engine.registry import ParserRegistry
 from ulpf.services.pipeline_orchestrator import PipelineOrchestrator
-from ulpf.packages.schemas.models import EventEnvelope, FormatType
 
 
 @pytest.fixture(scope="module")
@@ -35,7 +36,7 @@ def test_all_parsers_fuzz_direct_parsing(registry, text):
             assert hasattr(meta, "errors")
             assert hasattr(meta, "confidence")
         except Exception as e:
-            pytest.fail(f"Parser {parser.parser_id} crashed with unhandled exception on input: {repr(text[:50])}: {e}")
+            pytest.fail(f"Parser {parser.parser_id} crashed with unhandled exception on input: {text[:50]!r}: {e}")
 
 
 # Adversarially crafted format prefixes with corrupt tails

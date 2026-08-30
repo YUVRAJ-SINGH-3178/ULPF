@@ -5,7 +5,7 @@ Format: CEF:Version|Device Vendor|Device Product|Device Version|Device Event Cla
 """
 
 import re
-from typing import Dict, Any, Optional
+from typing import Any
 
 from ulpf.packages.schemas.models import FormatType, SourceMetadata
 from ulpf.services.parser_engine.base import BaseParser
@@ -33,10 +33,10 @@ class CEFParser(BaseParser):
             target_class_uid=4001
         )
 
-    def matches(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> bool:
+    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
         return "CEF:" in raw_payload
 
-    def parse_fields(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> Dict[str, Any]:
+    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
         raw = raw_payload.strip()
         cef_start = raw.find("CEF:")
         if cef_start == -1:
@@ -83,7 +83,7 @@ class CEFParser(BaseParser):
         severity = parts[6].strip()
         extension_str = parts[7].strip() if len(parts) > 7 else ""
 
-        parsed: Dict[str, Any] = {
+        parsed: dict[str, Any] = {
             "cef_version": version_num,
             "device_vendor": vendor,
             "device_product": product,
@@ -104,9 +104,9 @@ class CEFParser(BaseParser):
         self._normalize_common_cef_fields(parsed)
         return parsed
 
-    def _parse_extension(self, ext_str: str) -> Dict[str, Any]:
+    def _parse_extension(self, ext_str: str) -> dict[str, Any]:
         """Parses CEF extension key-value pairs with tokenization."""
-        kv_pairs: Dict[str, Any] = {}
+        kv_pairs: dict[str, Any] = {}
         # Match pattern: key=value pairs where key is word chars
         pattern = re.compile(r'([a-zA-Z0-9_]+)=')
         matches = list(pattern.finditer(ext_str))
@@ -126,7 +126,7 @@ class CEFParser(BaseParser):
 
         return kv_pairs
 
-    def _normalize_common_cef_fields(self, d: Dict[str, Any]):
+    def _normalize_common_cef_fields(self, d: dict[str, Any]):
         """Map common CEF extension keys to intermediate network fields."""
         if "src" in d:
             d["src_ip"] = d["src"]

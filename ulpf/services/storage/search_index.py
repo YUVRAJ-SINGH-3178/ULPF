@@ -3,12 +3,12 @@ SIEM-Facing Search & Analytics Storage Engine
 Provides sub-millisecond search, structured filters, faceting, and forensic queries.
 """
 
+import datetime
 import json
 import sqlite3
 import threading
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-import datetime
+from typing import Any
 
 from ulpf.packages.schemas.models import EventEnvelope
 
@@ -209,7 +209,7 @@ class SearchIndex:
             conn.commit()
             conn.close()
 
-    def index_batch(self, envelopes: List[EventEnvelope]):
+    def index_batch(self, envelopes: list[EventEnvelope]):
         """Index a batch of events efficiently in a single transaction."""
         if not envelopes:
             return
@@ -291,7 +291,7 @@ class SearchIndex:
             conn.commit()
             conn.close()
 
-    def get_event_by_id(self, event_id: str) -> Optional[Dict[str, Any]]:
+    def get_event_by_id(self, event_id: str) -> dict[str, Any] | None:
         """Retrieve full event by event_id."""
         conn = self._get_conn()
         cursor = conn.cursor()
@@ -309,17 +309,17 @@ class SearchIndex:
 
     def search_events(
         self,
-        query: Optional[str] = None,
-        vendor: Optional[str] = None,
-        product: Optional[str] = None,
-        detected_format: Optional[str] = None,
-        severity_id: Optional[int] = None,
-        disposition: Optional[str] = None,
-        src_ip: Optional[str] = None,
-        dst_ip: Optional[str] = None,
+        query: str | None = None,
+        vendor: str | None = None,
+        product: str | None = None,
+        detected_format: str | None = None,
+        severity_id: int | None = None,
+        disposition: str | None = None,
+        src_ip: str | None = None,
+        dst_ip: str | None = None,
         limit: int = 50,
         offset: int = 0
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute faceted SIEM search query.
         """
@@ -397,7 +397,7 @@ class SearchIndex:
             "events": rows
         }
 
-    def get_metrics_summary(self) -> Dict[str, Any]:
+    def get_metrics_summary(self) -> dict[str, Any]:
         """Calculates system metrics, vendor distribution, severity counts, and ingestion stats."""
         conn = self._get_conn()
         cursor = conn.cursor()
@@ -465,11 +465,11 @@ class SearchIndex:
 
     def list_audits(
         self,
-        user: Optional[str] = None,
-        action: Optional[str] = None,
+        user: str | None = None,
+        action: str | None = None,
         limit: int = 100,
         offset: int = 0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Queries persistent audit trail with optional filtering."""
         conn = self._get_conn()
         cursor = conn.cursor()

@@ -3,9 +3,9 @@ Unit Tests: Lossless Raw Event Preservation & Cryptographic SHA-256 Verification
 """
 
 import hashlib
-import os
 import shutil
 import tempfile
+
 import pytest
 
 from ulpf.services.storage.raw_store import ImmutableRawStore

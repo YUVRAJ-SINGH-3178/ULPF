@@ -3,28 +3,26 @@ Master Pipeline Orchestration Engine
 Integrates Ingestion -> Lossless Storage -> Detection -> Parsing / Drain3 Onboarding -> OCSF Normalization -> Validation -> Enrichment -> Dual Sinks.
 """
 
-import time
 import threading
+import time
 from collections import deque
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any
 
 from ulpf.packages.schemas.models import (
     EventEnvelope,
-    FormatType,
     VerificationResult,
-    SourceMetadata
 )
+from ulpf.services.detection.format_detector import FormatDetector
+from ulpf.services.enrichment.offline_enricher import OfflineEnricher
+from ulpf.services.ingestion.raw_envelope import EnvelopeFactory
+from ulpf.services.normalization.ocsf_mapper import OCSFNormalizer
+from ulpf.services.onboarding.session_manager import OnboardingSessionManager
+from ulpf.services.parser_engine.registry import ParserRegistry
+from ulpf.services.replay.replay_engine import ErrorAndReplayQueue
+from ulpf.services.storage.data_lake import ParquetDataLakeWriter
 from ulpf.services.storage.raw_store import ImmutableRawStore
 from ulpf.services.storage.search_index import SearchIndex
-from ulpf.services.storage.data_lake import ParquetDataLakeWriter
-from ulpf.services.detection.format_detector import FormatDetector
-from ulpf.services.parser_engine.registry import ParserRegistry
-from ulpf.services.normalization.ocsf_mapper import OCSFNormalizer
 from ulpf.services.validation.validator import PipelineValidator
-from ulpf.services.enrichment.offline_enricher import OfflineEnricher
-from ulpf.services.onboarding.session_manager import OnboardingSessionManager
-from ulpf.services.replay.replay_engine import ErrorAndReplayQueue
-from ulpf.services.ingestion.raw_envelope import EnvelopeFactory
 
 
 class PipelineOrchestrator:
@@ -58,7 +56,7 @@ class PipelineOrchestrator:
         )
 
         self.enable_data_lake_auto_flush = enable_data_lake_auto_flush
-        self._batch_buffer: List[EventEnvelope] = []
+        self._batch_buffer: list[EventEnvelope] = []
         self._buffer_lock = threading.Lock()
 
         # Telemetry metrics
@@ -74,10 +72,10 @@ class PipelineOrchestrator:
         self,
         raw_payload: str,
         transport: str = "api",
-        client_ip: Optional[str] = "127.0.0.1",
+        client_ip: str | None = "127.0.0.1",
         collector_host: str = "ulpf-node-01",
-        vendor_hint: Optional[str] = None,
-        product_hint: Optional[str] = None
+        vendor_hint: str | None = None,
+        product_hint: str | None = None
     ) -> EventEnvelope:
         """
         Executes complete ULPF pipeline for a single raw event:
@@ -215,10 +213,10 @@ class PipelineOrchestrator:
 
     def process_batch(
         self,
-        raw_payloads: List[str],
+        raw_payloads: list[str],
         transport: str = "batch",
         client_ip: str = "127.0.0.1"
-    ) -> List[EventEnvelope]:
+    ) -> list[EventEnvelope]:
         """Processes a batch of raw log lines."""
         envelopes = []
         for raw in raw_payloads:
@@ -231,7 +229,7 @@ class PipelineOrchestrator:
         """Verifies cryptographic SHA-256 byte-level integrity for an event."""
         return self.validator.validate_integrity(event_id)
 
-    def flush_data_lake(self) -> Optional[str]:
+    def flush_data_lake(self) -> str | None:
         """Manually flushes pending envelopes to Parquet."""
         with self._buffer_lock:
             if not self._batch_buffer:
@@ -240,12 +238,12 @@ class PipelineOrchestrator:
             self._batch_buffer.clear()
             return self.data_lake.write_batch(to_flush)
 
-    def _on_replay_requested(self, raw_logs: List[str]):
+    def _on_replay_requested(self, raw_logs: list[str]):
         """Internal callback when an onboarding session is approved, replaying buffered logs."""
         for log in raw_logs:
             self.process_raw_log(log, transport="replay")
 
-    def get_realtime_metrics(self) -> Dict[str, Any]:
+    def get_realtime_metrics(self) -> dict[str, Any]:
         """Calculates live EPS, latency percentiles, and counts."""
         with self._metrics_lock:
             now = time.time()

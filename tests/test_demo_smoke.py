@@ -5,10 +5,8 @@ Executes both primary ULPF evaluation stories end-to-end against the API:
 - Story 2: Unknown-Log Onboarding (Ingest Unseen -> Drain3 Template Discovery -> Mapping Review -> Approval & Publish -> Zero-Touch Ingestion -> Audit Trail)
 """
 
-import pytest
-import duckdb
-from pathlib import Path
 from fastapi.testclient import TestClient
+
 from ulpf.apps.api.main import app
 
 client = TestClient(app)

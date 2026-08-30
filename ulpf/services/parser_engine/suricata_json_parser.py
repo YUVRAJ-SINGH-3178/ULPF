@@ -4,7 +4,7 @@ Parses Suricata EVE telemetry including Alerts, DNS, HTTP, Flow, and TLS records
 """
 
 import json
-from typing import Dict, Any, Optional
+from typing import Any
 
 from ulpf.packages.schemas.models import FormatType, SourceMetadata
 from ulpf.services.parser_engine.base import BaseParser
@@ -33,20 +33,20 @@ class SuricataEVEParser(BaseParser):
             target_class_uid=4001
         )
 
-    def matches(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> bool:
+    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
         raw = raw_payload.strip()
         if not (raw.startswith("{") and raw.endswith("}")):
             return False
         return ("event_type" in raw and ("flow_id" in raw or "src_ip" in raw or "alert" in raw))
 
-    def parse_fields(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> Dict[str, Any]:
+    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
         data = json.loads(raw_payload.strip())
         if not isinstance(data, dict):
             raise ValueError("Suricata payload is not a JSON dictionary")
 
         event_type = data.get("event_type", "flow")
         
-        parsed: Dict[str, Any] = {
+        parsed: dict[str, Any] = {
             "device_vendor": "Suricata",
             "device_product": "EVE-IDS",
             "event_type": event_type,

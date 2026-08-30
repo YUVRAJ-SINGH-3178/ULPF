@@ -4,10 +4,11 @@ Integration Tests: Drain3 Unknown Log Auto-Onboarding & Replay Lifecycle
 
 import shutil
 import tempfile
+
 import pytest
 
-from ulpf.services.pipeline_orchestrator import PipelineOrchestrator
 from ulpf.packages.schemas.models import OnboardingStatus
+from ulpf.services.pipeline_orchestrator import PipelineOrchestrator
 
 
 @pytest.fixture

@@ -3,16 +3,14 @@ Raw Envelope Generator & Lossless Capture Engine
 Creates unmutated event envelopes, computes SHA-256, and ensures raw write-once storage BEFORE processing.
 """
 
-import uuid
 import datetime
-from typing import Optional, Dict, Any
+import uuid
 
 from ulpf.packages.schemas.models import (
     EventEnvelope,
-    SourceMetadata,
-    RawStorageRef,
+    FormatType,
     ParsingMetadata,
-    FormatType
+    SourceMetadata,
 )
 from ulpf.services.storage.raw_store import ImmutableRawStore
 
@@ -22,17 +20,17 @@ class EnvelopeFactory:
     Constructs immutable event envelopes and immediately archives the raw payload into storage.
     """
 
-    def __init__(self, raw_store: Optional[ImmutableRawStore] = None):
+    def __init__(self, raw_store: ImmutableRawStore | None = None):
         self.raw_store = raw_store or ImmutableRawStore()
 
     def create_envelope(
         self,
         raw_payload: str,
         transport: str = "api",
-        client_ip: Optional[str] = None,
+        client_ip: str | None = None,
         collector_host: str = "ulpf-node-01",
-        vendor_hint: Optional[str] = None,
-        product_hint: Optional[str] = None
+        vendor_hint: str | None = None,
+        product_hint: str | None = None
     ) -> EventEnvelope:
         """
         1. Generates unique event_id (UUIDv4)

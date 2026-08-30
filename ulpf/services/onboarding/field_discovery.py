@@ -3,11 +3,9 @@ Field Discovery & OCSF Mapping Advisor
 Performs heuristic type inference and generates candidate OCSF 1.1.0 field mappings from Drain3 templates.
 """
 
-import ipaddress
 import re
-from typing import Dict, Any, List, Tuple, Optional
 
-from ulpf.packages.schemas.models import TemplateVariable, ParserRule
+from ulpf.packages.schemas.models import ParserRule, TemplateVariable
 
 
 class FieldDiscoveryEngine:
@@ -24,8 +22,8 @@ class FieldDiscoveryEngine:
     def analyze_template_and_samples(
         self,
         template_str: str,
-        sample_logs: List[str]
-    ) -> Tuple[List[TemplateVariable], str, List[ParserRule]]:
+        sample_logs: list[str]
+    ) -> tuple[list[TemplateVariable], str, list[ParserRule]]:
         """
         1. Identifies variable placeholders in template.
         2. Converts template into regex with named capture groups.
@@ -42,7 +40,7 @@ class FieldDiscoveryEngine:
             pass
 
         # Collect sample values for each variable
-        samples_by_var: Dict[str, List[str]] = {v: [] for v in var_names}
+        samples_by_var: dict[str, list[str]] = {v: [] for v in var_names}
         if compiled_re:
             for s in sample_logs:
                 m = compiled_re.search(s.strip())
@@ -53,8 +51,8 @@ class FieldDiscoveryEngine:
                             samples_by_var[v].append(val)
 
         # Infer types and OCSF targets
-        variables: List[TemplateVariable] = []
-        rules: List[ParserRule] = []
+        variables: list[TemplateVariable] = []
+        rules: list[ParserRule] = []
 
         ip_count = 0
         port_count = 0
@@ -88,7 +86,7 @@ class FieldDiscoveryEngine:
 
         return variables, regex_pattern, rules
 
-    def _template_to_regex(self, template_str: str, sample_logs: Optional[List[str]] = None) -> Tuple[str, List[str], List[str]]:
+    def _template_to_regex(self, template_str: str, sample_logs: list[str] | None = None) -> tuple[str, list[str], list[str]]:
         """
         Converts Drain3 template into regex pattern with named groups (?P<var_0>...)
         Generalizes key=value tokens into value capture groups.
@@ -153,10 +151,10 @@ class FieldDiscoveryEngine:
         self,
         var_name: str,
         placeholder: str,
-        samples: List[str],
+        samples: list[str],
         ip_count: int,
         port_count: int
-    ) -> Tuple[str, str, float, Optional[str]]:
+    ) -> tuple[str, str, float, str | None]:
         """
         Determines type, suggested OCSF field, confidence score, and transform function.
         """

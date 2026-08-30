@@ -4,8 +4,8 @@ Provides pydantic-settings based environment configuration, secret validation, a
 """
 
 import os
-from typing import Optional
 from pathlib import Path
+
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -25,7 +25,7 @@ class Settings(BaseSettings):
         default=False,
         description="When True, allows default admin bypass and hardcoded fallback keys for offline hackathon demos."
     )
-    ULPF_SECRET_KEY: Optional[str] = Field(
+    ULPF_SECRET_KEY: str | None = Field(
         default=None,
         description="Cryptographic secret key for signing JWT tokens. Required when ULPF_DEMO_MODE=False."
     )
@@ -95,7 +95,7 @@ class Settings(BaseSettings):
 
 
 # Singleton instance
-_settings: Optional[Settings] = None
+_settings: Settings | None = None
 
 
 def get_settings() -> Settings:
@@ -111,7 +111,7 @@ def get_settings() -> Settings:
     return _settings
 
 
-def reset_settings(new_settings: Optional[Settings] = None):
+def reset_settings(new_settings: Settings | None = None):
     """Utility to refresh settings in tests."""
     global _settings
     _settings = new_settings

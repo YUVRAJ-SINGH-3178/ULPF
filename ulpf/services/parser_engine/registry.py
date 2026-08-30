@@ -6,31 +6,29 @@ Maintains active, testing, draft, and deprecated parsers with version control an
 import json
 import threading
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any
 
 from ulpf.packages.schemas.models import (
-    FormatType,
+    ParserDefinition,
     ParserStatus,
     SourceMetadata,
-    ParserDefinition,
-    ParserRule
 )
 from ulpf.services.parser_engine.base import BaseParser
 from ulpf.services.parser_engine.cef_parser import CEFParser
-from ulpf.services.parser_engine.leef_parser import LEEFParser
-from ulpf.services.parser_engine.cisco_asa_parser import CiscoASAParser
-from ulpf.services.parser_engine.palo_alto_parser import PaloAltoParser
-from ulpf.services.parser_engine.fortinet_parser import FortinetParser
 from ulpf.services.parser_engine.checkpoint_parser import CheckpointParser
+from ulpf.services.parser_engine.cisco_asa_parser import CiscoASAParser
+from ulpf.services.parser_engine.drain3_dynamic_parser import Drain3DynamicParser
+from ulpf.services.parser_engine.fortinet_parser import FortinetParser
+from ulpf.services.parser_engine.generic_parsers import (
+    GenericJSONParser,
+    GenericRFC3164Parser,
+    GenericRFC5424Parser,
+)
+from ulpf.services.parser_engine.leef_parser import LEEFParser
+from ulpf.services.parser_engine.palo_alto_parser import PaloAltoParser
+from ulpf.services.parser_engine.squid_parser import SquidProxyParser
 from ulpf.services.parser_engine.suricata_json_parser import SuricataEVEParser
 from ulpf.services.parser_engine.zeek_parser import ZeekConnParser
-from ulpf.services.parser_engine.squid_parser import SquidProxyParser
-from ulpf.services.parser_engine.generic_parsers import (
-    GenericRFC5424Parser,
-    GenericRFC3164Parser,
-    GenericJSONParser
-)
-from ulpf.services.parser_engine.drain3_dynamic_parser import Drain3DynamicParser
 
 
 class ParserRegistry:
@@ -42,15 +40,15 @@ class ParserRegistry:
         self.persistence_dir = Path(persistence_dir)
         self.persistence_dir.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
-        self._parsers: Dict[str, BaseParser] = {}
-        self._parser_defs: Dict[str, ParserDefinition] = {}
+        self._parsers: dict[str, BaseParser] = {}
+        self._parser_defs: dict[str, ParserDefinition] = {}
 
         self._register_default_parsers()
         self._load_persisted_parsers()
 
     def _register_default_parsers(self):
         """Registers built-in parsers."""
-        defaults: List[BaseParser] = [
+        defaults: list[BaseParser] = [
             CiscoASAParser(),
             PaloAltoParser(),
             FortinetParser(),
@@ -142,7 +140,7 @@ class ParserRegistry:
 
             return key
 
-    def find_parser(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> Optional[BaseParser]:
+    def find_parser(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> BaseParser | None:
         """
         Finds the best matching ACTIVE parser for a given raw payload.
         Prioritizes specific vendor parsers over generic fallbacks.
@@ -170,7 +168,7 @@ class ParserRegistry:
 
         return None
 
-    def get_parser(self, parser_id: str, version: Optional[str] = None) -> Optional[BaseParser]:
+    def get_parser(self, parser_id: str, version: str | None = None) -> BaseParser | None:
         with self._lock:
             if version:
                 return self._parsers.get(f"{parser_id}:{version}")
@@ -180,14 +178,14 @@ class ParserRegistry:
                 return matches[-1]
             return None
 
-    def list_parsers(self) -> List[Dict[str, Any]]:
+    def list_parsers(self) -> list[dict[str, Any]]:
         with self._lock:
             result = []
             for key, p_def in self._parser_defs.items():
                 result.append(p_def.model_dump())
             return result
 
-    def test_parser(self, parser_id: str, sample_payload: str, version: Optional[str] = None) -> Dict[str, Any]:
+    def test_parser(self, parser_id: str, sample_payload: str, version: str | None = None) -> dict[str, Any]:
         parser = self.get_parser(parser_id, version)
         if not parser:
             return {"success": False, "error": f"Parser {parser_id} not found"}

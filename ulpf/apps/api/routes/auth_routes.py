@@ -3,23 +3,23 @@ Authentication API Endpoints
 Login, Token Refresh, and Current User Profile.
 """
 
-from typing import Dict, Any
+from typing import Any
+
 import jwt
-from fastapi import APIRouter, HTTPException, Depends, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from ulpf.apps.api.auth import (
+    USERS_DB,
     LoginRequest,
     RefreshTokenRequest,
     TokenResponse,
-    verify_user,
     create_access_token,
     create_refresh_token,
     get_current_user,
-    USERS_DB
+    verify_user,
 )
 from ulpf.packages.config.settings import get_settings
 from ulpf.packages.security.sanitization import auth_rate_limiter
-
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -56,7 +56,7 @@ def login(credentials: LoginRequest, request: Request):
     )
 
 
-@router.post("/refresh", response_model=Dict[str, Any])
+@router.post("/refresh", response_model=dict[str, Any])
 def refresh_token(request: RefreshTokenRequest):
     """Exchanges a valid refresh token for a newly signed access token."""
     settings = get_settings()
@@ -101,8 +101,8 @@ def refresh_token(request: RefreshTokenRequest):
         )
 
 
-@router.get("/me", response_model=Dict[str, Any])
-def get_my_info(user: Dict[str, Any] = Depends(get_current_user)):
+@router.get("/me", response_model=dict[str, Any])
+def get_my_info(user: dict[str, Any] = Depends(get_current_user)):
     """Returns currently authenticated user profile and active role."""
     role_val = user["role"].value if hasattr(user["role"], "value") else str(user["role"])
     return {

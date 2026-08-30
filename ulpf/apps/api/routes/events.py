@@ -3,20 +3,24 @@ Events API Endpoints
 Ingestion, SIEM Search, Forensic Lookup, Lossless Raw Retrieval, and SHA-256 Integrity Verification.
 """
 
-from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, Query, Body
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from ulpf.packages.schemas.models import UserRole, VerificationResult
 from ulpf.apps.api.auth import get_current_user, require_roles
-from ulpf.services.pipeline_orchestrator import PipelineOrchestrator
 from ulpf.packages.config.settings import get_settings
-from ulpf.packages.security.sanitization import validate_safe_identifier, ingest_rate_limiter
+from ulpf.packages.schemas.models import UserRole, VerificationResult
+from ulpf.packages.security.sanitization import (
+    ingest_rate_limiter,
+    validate_safe_identifier,
+)
+from ulpf.services.pipeline_orchestrator import PipelineOrchestrator
 
 router = APIRouter(prefix="/events", tags=["Events & Ingestion"])
 
 # Global orchestrator reference injected at app startup
-_orchestrator: Optional[PipelineOrchestrator] = None
+_orchestrator: PipelineOrchestrator | None = None
 
 
 def set_orchestrator(orchestrator: PipelineOrchestrator):
@@ -32,22 +36,22 @@ def get_orchestrator() -> PipelineOrchestrator:
 
 class SingleIngestRequest(BaseModel):
     raw_payload: str
-    transport: Optional[str] = "api"
-    client_ip: Optional[str] = "127.0.0.1"
-    vendor_hint: Optional[str] = None
-    product_hint: Optional[str] = None
+    transport: str | None = "api"
+    client_ip: str | None = "127.0.0.1"
+    vendor_hint: str | None = None
+    product_hint: str | None = None
 
 
 class BatchIngestRequest(BaseModel):
-    logs: List[str]
-    transport: Optional[str] = "batch_api"
-    client_ip: Optional[str] = "127.0.0.1"
+    logs: list[str]
+    transport: str | None = "batch_api"
+    client_ip: str | None = "127.0.0.1"
 
 
-@router.post("/ingest", response_model=Dict[str, Any])
+@router.post("/ingest", response_model=dict[str, Any])
 def ingest_single_event(
     req: SingleIngestRequest,
-    user: Dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR, UserRole.ANALYST]))
+    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR, UserRole.ANALYST]))
 ):
     """
     Ingests a single raw log payload, executes lossless archiving, format detection,
@@ -79,10 +83,10 @@ def ingest_single_event(
     return envelope.model_dump()
 
 
-@router.post("/batch", response_model=Dict[str, Any])
+@router.post("/batch", response_model=dict[str, Any])
 def ingest_batch_events(
     req: BatchIngestRequest,
-    user: Dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR]))
+    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR]))
 ):
     """
     Ingests a batch of raw log strings into the ULPF pipeline.
@@ -104,19 +108,19 @@ def ingest_batch_events(
     }
 
 
-@router.get("", response_model=Dict[str, Any])
+@router.get("", response_model=dict[str, Any])
 def search_events(
-    query: Optional[str] = Query(None, description="Full-text search query across raw and OCSF documents"),
-    vendor: Optional[str] = Query(None, description="Filter by vendor name (e.g. Cisco, Palo Alto, Fortinet)"),
-    product: Optional[str] = Query(None, description="Filter by product name (e.g. ASA, PAN-OS, FortiOS)"),
-    detected_format: Optional[str] = Query(None, description="Filter by detected format"),
-    severity_id: Optional[int] = Query(None, description="Filter by OCSF severity_id (1-6)"),
-    disposition: Optional[str] = Query(None, description="Filter by disposition (Allowed, Blocked)"),
-    src_ip: Optional[str] = Query(None, description="Filter by source IP"),
-    dst_ip: Optional[str] = Query(None, description="Filter by destination IP"),
+    query: str | None = Query(None, description="Full-text search query across raw and OCSF documents"),
+    vendor: str | None = Query(None, description="Filter by vendor name (e.g. Cisco, Palo Alto, Fortinet)"),
+    product: str | None = Query(None, description="Filter by product name (e.g. ASA, PAN-OS, FortiOS)"),
+    detected_format: str | None = Query(None, description="Filter by detected format"),
+    severity_id: int | None = Query(None, description="Filter by OCSF severity_id (1-6)"),
+    disposition: str | None = Query(None, description="Filter by disposition (Allowed, Blocked)"),
+    src_ip: str | None = Query(None, description="Filter by source IP"),
+    dst_ip: str | None = Query(None, description="Filter by destination IP"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: dict[str, Any] = Depends(get_current_user)
 ):
     """
     Faceted SIEM search and inspection endpoint.
@@ -137,10 +141,10 @@ def search_events(
     return results
 
 
-@router.get("/{event_id}", response_model=Dict[str, Any])
+@router.get("/{event_id}", response_model=dict[str, Any])
 def get_event_details(
     event_id: str,
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: dict[str, Any] = Depends(get_current_user)
 ):
     """
     Retrieves full event envelope including OCSF normalized event, parsing metadata, and traceability links.
@@ -153,10 +157,10 @@ def get_event_details(
     return event_data
 
 
-@router.get("/{event_id}/raw", response_model=Dict[str, Any])
+@router.get("/{event_id}/raw", response_model=dict[str, Any])
 def get_raw_event(
     event_id: str,
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: dict[str, Any] = Depends(get_current_user)
 ):
     """
     Retrieves exact unmutated raw payload and storage reference from the write-once store.
@@ -177,10 +181,10 @@ def get_raw_event(
     }
 
 
-@router.post("/{event_id}/verify-integrity", response_model=Dict[str, Any])
+@router.post("/{event_id}/verify-integrity", response_model=dict[str, Any])
 def verify_event_integrity(
     event_id: str,
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: dict[str, Any] = Depends(get_current_user)
 ):
     """
     Cryptographic Verification: Re-reads raw payload from disk, calculates SHA-256 hash,
@@ -192,10 +196,10 @@ def verify_event_integrity(
     return res.model_dump()
 
 
-@router.post("/{event_id}/tamper-test", response_model=Dict[str, Any])
+@router.post("/{event_id}/tamper-test", response_model=dict[str, Any])
 def tamper_test_helper(
     event_id: str,
-    user: Dict[str, Any] = Depends(require_roles([UserRole.ADMIN]))
+    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN]))
 ):
     """
     Demonstration helper to simulate payload tampering on disk and test tamper detection.

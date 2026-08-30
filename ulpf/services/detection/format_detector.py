@@ -5,7 +5,6 @@ Uses structural signatures, headers, and heuristics to accurately identify log f
 
 import json
 import re
-from typing import Tuple, Optional, Dict, Any
 
 from ulpf.packages.schemas.models import FormatType, SourceMetadata
 
@@ -20,7 +19,7 @@ class FormatDetector:
     CISCO_ASA_REGEX = re.compile(r"(?:%ASA-\d+-\d+|%FTD-\d+-\d+)", re.IGNORECASE)
     FORTINET_KV_REGEX = re.compile(r"(?:date=\S+\s+time=\S+\s+devname=\S+|type=(?:traffic|utm|event)\s+subtype=)", re.IGNORECASE)
 
-    def detect(self, raw_payload: str) -> Tuple[FormatType, str, str, float]:
+    def detect(self, raw_payload: str) -> tuple[FormatType, str, str, float]:
         """
         Detects format, vendor, product, and detection confidence.
         Returns (format_type, vendor, product, confidence)

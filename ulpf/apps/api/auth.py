@@ -3,20 +3,19 @@ Authentication & Role-Based Access Control (RBAC)
 Provides JWT security, user management, password hashing, and role enforcement (ADMIN, OPERATOR, ANALYST, REVIEWER).
 """
 
-import os
 import datetime
 import hashlib
 import hmac
-from typing import Optional, Dict, Any, List
-import jwt
+from typing import Any
+
 import bcrypt
-from fastapi import HTTPException, Security, Depends, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import jwt
+from fastapi import Depends, HTTPException, Security, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
-from ulpf.packages.schemas.models import UserRole
 from ulpf.packages.config.settings import get_settings
-
+from ulpf.packages.schemas.models import UserRole
 
 security = HTTPBearer(auto_error=False)
 
@@ -43,7 +42,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 # Built-in Default Users (pre-computed bcrypt hashes for instant startup)
-USERS_DB: Dict[str, Dict[str, Any]] = {
+USERS_DB: dict[str, dict[str, Any]] = {
     "admin": {
         "username": "admin",
         "password_hash": hash_password("admin123"),
@@ -90,7 +89,7 @@ class LoginRequest(BaseModel):
     password: str = Field(..., min_length=1, max_length=128)
 
 
-def create_access_token(data: dict, expires_delta: Optional[datetime.timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: datetime.timedelta | None = None) -> str:
     settings = get_settings()
     to_encode = data.copy()
     expire_minutes = settings.ULPF_ACCESS_TOKEN_EXPIRE_MINUTES
@@ -108,7 +107,7 @@ def create_refresh_token(data: dict) -> str:
     return jwt.encode(to_encode, settings.ULPF_SECRET_KEY, algorithm=settings.ULPF_JWT_ALGORITHM)
 
 
-def verify_user(credentials: LoginRequest) -> Optional[Dict[str, Any]]:
+def verify_user(credentials: LoginRequest) -> dict[str, Any] | None:
     user = USERS_DB.get(credentials.username)
     if not user:
         return None
@@ -117,7 +116,7 @@ def verify_user(credentials: LoginRequest) -> Optional[Dict[str, Any]]:
     return None
 
 
-def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Security(security)) -> Dict[str, Any]:
+def get_current_user(credentials: HTTPAuthorizationCredentials | None = Security(security)) -> dict[str, Any]:
     settings = get_settings()
 
     if not credentials or not credentials.credentials:
@@ -162,8 +161,8 @@ def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Secur
         )
 
 
-def require_roles(allowed_roles: List[UserRole]):
-    def role_checker(user: Dict[str, Any] = Depends(get_current_user)):
+def require_roles(allowed_roles: list[UserRole]):
+    def role_checker(user: dict[str, Any] = Depends(get_current_user)):
         user_role = user.get("role")
         if user_role not in allowed_roles and user_role != UserRole.ADMIN:
             raise HTTPException(

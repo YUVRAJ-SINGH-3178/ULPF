@@ -4,17 +4,16 @@ Tests Phase 2 production requirements: JWT tokens, password hashing, demo mode t
 fail-fast validation, refresh tokens, and state survival across restart.
 """
 
-import os
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
+from ulpf.apps.api.auth import hash_password, verify_password
 from ulpf.apps.api.main import app
-from ulpf.packages.config.settings import Settings, get_settings, reset_settings
-from ulpf.apps.api.auth import hash_password, verify_password, USERS_DB
+from ulpf.packages.config.settings import Settings, reset_settings
+from ulpf.packages.schemas.models import FormatType, ParserDefinition
 from ulpf.services.onboarding.session_manager import OnboardingSessionManager
 from ulpf.services.parser_engine.registry import ParserRegistry
-from ulpf.packages.schemas.models import ParserDefinition, ParserStatus, FormatType
 
 
 @pytest.fixture(autouse=True)

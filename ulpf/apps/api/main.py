@@ -3,25 +3,25 @@ ULPF FastAPI Application
 Main service hosting REST APIs, Ingestion Daemons, and Cyber-Ops Dashboard.
 """
 
-import os
 from contextlib import asynccontextmanager
 from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
-from ulpf.services.pipeline_orchestrator import PipelineOrchestrator
-from ulpf.services.ingestion.listeners import UDPSyslogListener, TCPSyslogListener
-from ulpf.apps.api.routes.events import router as events_router, set_orchestrator
-from ulpf.apps.api.routes.parsers import router as parsers_router
-from ulpf.apps.api.routes.onboarding import router as onboarding_router
-from ulpf.apps.api.routes.errors import router as errors_router
-from ulpf.apps.api.routes.datalake import router as datalake_router
-from ulpf.apps.api.routes.benchmark import router as benchmark_router
-from ulpf.apps.api.routes.pipeline import router as pipeline_router
 from ulpf.apps.api.routes.auth_routes import router as auth_router
-
+from ulpf.apps.api.routes.benchmark import router as benchmark_router
+from ulpf.apps.api.routes.datalake import router as datalake_router
+from ulpf.apps.api.routes.errors import router as errors_router
+from ulpf.apps.api.routes.events import router as events_router
+from ulpf.apps.api.routes.events import set_orchestrator
+from ulpf.apps.api.routes.onboarding import router as onboarding_router
+from ulpf.apps.api.routes.parsers import router as parsers_router
+from ulpf.apps.api.routes.pipeline import router as pipeline_router
+from ulpf.services.ingestion.listeners import TCPSyslogListener, UDPSyslogListener
+from ulpf.services.pipeline_orchestrator import PipelineOrchestrator
 
 # Initialize global orchestrator
 orchestrator = PipelineOrchestrator(base_dir="data")
@@ -62,6 +62,7 @@ def seed_initial_telemetry():
 
 
 from ulpf.packages.config.settings import get_settings
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -119,8 +120,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from ulpf.apps.api.routes.pipeline import get_prometheus_metrics
 from fastapi import Response
+
+from ulpf.apps.api.routes.pipeline import get_prometheus_metrics
 
 # Mount API Routers
 app.include_router(auth_router, prefix="/api")

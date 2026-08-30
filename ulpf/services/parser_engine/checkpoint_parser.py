@@ -4,7 +4,7 @@ Parses Checkpoint syslog security events.
 """
 
 import re
-from typing import Dict, Any, Optional
+from typing import Any
 
 from ulpf.packages.schemas.models import FormatType, SourceMetadata
 from ulpf.services.parser_engine.base import BaseParser
@@ -32,14 +32,14 @@ class CheckpointParser(BaseParser):
             target_class_uid=4001
         )
 
-    def matches(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> bool:
+    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
         lower = raw_payload.lower()
         return ("checkpoint" in lower or "fw1" in lower or "log_uid=" in lower or (source_meta and source_meta.vendor.lower() == "checkpoint"))
 
-    def parse_fields(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> Dict[str, Any]:
+    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
         raw = raw_payload.strip()
 
-        parsed: Dict[str, Any] = {
+        parsed: dict[str, Any] = {
             "device_vendor": "Checkpoint",
             "device_product": "Firewall-1",
             "message": raw

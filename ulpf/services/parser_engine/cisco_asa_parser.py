@@ -4,7 +4,7 @@ Parses Cisco Adaptive Security Appliance syslog events (Built connections, Teard
 """
 
 import re
-from typing import Dict, Any, Optional
+from typing import Any
 
 from ulpf.packages.schemas.models import FormatType, SourceMetadata
 from ulpf.services.parser_engine.base import BaseParser
@@ -32,13 +32,13 @@ class CiscoASAParser(BaseParser):
             target_class_uid=4001
         )
 
-    def matches(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> bool:
+    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
         return bool(re.search(r"%ASA-\d+-\d+|%FTD-\d+-\d+", raw_payload))
 
-    def parse_fields(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> Dict[str, Any]:
+    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
         raw = raw_payload.strip()
 
-        parsed: Dict[str, Any] = {
+        parsed: dict[str, Any] = {
             "device_vendor": "Cisco",
             "device_product": "ASA",
             "message": raw

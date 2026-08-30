@@ -5,27 +5,23 @@ Guarantees zero field loss by capturing unmapped vendor fields into the 'unmappe
 """
 
 import datetime
-import re
-from typing import Dict, Any, Tuple, Optional
+from typing import Any
 
 from ulpf.packages.schemas.models import (
     SourceMetadata,
-    OCSFNetworkActivity,
-    OCSFSecurityFinding
 )
 from ulpf.services.normalization.enums import (
+    DIRECTION_NAMES,
+    DISPOSITION_NAMES,
+    SEVERITY_NAMES,
+    STATUS_NAMES,
     OCSFCategory,
     OCSFClass,
+    OCSFDisposition,
+    OCSFNetworkActivityId,
     OCSFSeverity,
     OCSFStatus,
-    OCSFDisposition,
-    OCSFDirection,
-    OCSFNetworkActivityId,
-    SEVERITY_NAMES,
-    DISPOSITION_NAMES,
-    STATUS_NAMES,
-    DIRECTION_NAMES,
-    normalize_protocol
+    normalize_protocol,
 )
 
 
@@ -48,11 +44,11 @@ class OCSFNormalizer:
 
     def normalize(
         self,
-        parsed_fields: Dict[str, Any],
+        parsed_fields: dict[str, Any],
         source_meta: SourceMetadata,
         raw_payload: str,
         event_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Produces an OCSF 1.1.0 JSON object from parsed fields.
         """
@@ -164,7 +160,7 @@ class OCSFNormalizer:
 
         return ocsf_doc
 
-    def _normalize_timestamp(self, ts_raw: Optional[Any]) -> Tuple[int, str]:
+    def _normalize_timestamp(self, ts_raw: Any | None) -> tuple[int, str]:
         now = datetime.datetime.now(datetime.timezone.utc)
         if not ts_raw:
             return int(now.timestamp() * 1000), now.isoformat()
@@ -203,7 +199,7 @@ class OCSFNormalizer:
 
         return int(now.timestamp() * 1000), now.isoformat()
 
-    def _normalize_severity(self, parsed: Dict[str, Any]) -> Tuple[int, str]:
+    def _normalize_severity(self, parsed: dict[str, Any]) -> tuple[int, str]:
         if "severity_id" in parsed and parsed["severity_id"] in SEVERITY_NAMES:
             sev_id = int(parsed["severity_id"])
             return sev_id, SEVERITY_NAMES[sev_id]
@@ -225,7 +221,7 @@ class OCSFNormalizer:
 
         return OCSFSeverity.INFORMATIONAL.value, "Informational"
 
-    def _normalize_status(self, parsed: Dict[str, Any]) -> Tuple[int, str]:
+    def _normalize_status(self, parsed: dict[str, Any]) -> tuple[int, str]:
         if "status_id" in parsed and parsed["status_id"] in STATUS_NAMES:
             st_id = int(parsed["status_id"])
             return st_id, STATUS_NAMES[st_id]
@@ -236,7 +232,7 @@ class OCSFNormalizer:
             return OCSFStatus.SUCCESS.value, "Success"
         return OCSFStatus.SUCCESS.value, "Success"
 
-    def _normalize_disposition(self, parsed: Dict[str, Any]) -> Tuple[int, str]:
+    def _normalize_disposition(self, parsed: dict[str, Any]) -> tuple[int, str]:
         if "disposition_id" in parsed and parsed["disposition_id"] in DISPOSITION_NAMES:
             d_id = int(parsed["disposition_id"])
             return d_id, DISPOSITION_NAMES[d_id]
@@ -249,7 +245,7 @@ class OCSFNormalizer:
 
         return OCSFDisposition.ALLOWED.value, "Allowed"
 
-    def _build_src_endpoint(self, parsed: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_src_endpoint(self, parsed: dict[str, Any]) -> dict[str, Any]:
         ep = {}
         ip = parsed.get("src_ip")
         if ip:
@@ -270,7 +266,7 @@ class OCSFNormalizer:
             ep["zone"] = parsed["src_zone"]
         return ep
 
-    def _build_dst_endpoint(self, parsed: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_dst_endpoint(self, parsed: dict[str, Any]) -> dict[str, Any]:
         ep = {}
         ip = parsed.get("dst_ip")
         if ip:
@@ -291,7 +287,7 @@ class OCSFNormalizer:
             ep["zone"] = parsed["dst_zone"]
         return ep
 
-    def _build_connection_info(self, parsed: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_connection_info(self, parsed: dict[str, Any]) -> dict[str, Any]:
         proto_name, proto_num = normalize_protocol(parsed.get("protocol"))
         direction = parsed.get("direction", "Inbound")
         dir_id = 1 if direction.lower() == "inbound" else (2 if direction.lower() == "outbound" else 3)
@@ -303,7 +299,7 @@ class OCSFNormalizer:
             "direction": DIRECTION_NAMES.get(dir_id, "Inbound")
         }
 
-    def _build_traffic(self, parsed: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_traffic(self, parsed: dict[str, Any]) -> dict[str, Any]:
         traffic = {}
         if parsed.get("bytes_in") is not None:
             traffic["bytes_in"] = int(parsed["bytes_in"])

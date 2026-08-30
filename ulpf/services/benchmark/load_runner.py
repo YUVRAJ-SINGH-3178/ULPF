@@ -3,10 +3,11 @@ Performance & Load Benchmarking Engine
 Executes real load tests across heterogeneous formats and measures actual throughput, latency percentiles, CPU and RAM usage.
 """
 
-import time
 import os
 import threading
-from typing import Dict, Any, List, Optional
+import time
+from typing import Any
+
 import psutil
 
 from ulpf.services.pipeline_orchestrator import PipelineOrchestrator
@@ -44,7 +45,7 @@ class BenchmarkRunner:
         self,
         event_count: int = 5000,
         concurrency: int = 4
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Executes a real benchmark across worker threads and calculates empirical metrics.
         """
@@ -56,14 +57,14 @@ class BenchmarkRunner:
         cpu_start = self.process.cpu_percent(interval=None)
         mem_start_mb = self.process.memory_info().rss / (1024 * 1024)
 
-        latencies_ms: List[float] = []
+        latencies_ms: list[float] = []
         chunk_size = event_count // concurrency
         chunks = [workload[i:i + chunk_size] for i in range(0, event_count, chunk_size)]
 
         total_bytes = sum(len(l.encode("utf-8")) for l in workload)
         start_t = time.perf_counter()
 
-        def worker(chunk_logs: List[str]):
+        def worker(chunk_logs: list[str]):
             for log in chunk_logs:
                 t0 = time.perf_counter()
                 self.orchestrator.process_raw_log(log, transport="benchmark")

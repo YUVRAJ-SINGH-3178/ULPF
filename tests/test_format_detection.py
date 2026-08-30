@@ -3,6 +3,7 @@ Unit Tests: Format & Source Detection Engine
 """
 
 import pytest
+
 from ulpf.packages.schemas.models import FormatType
 from ulpf.services.detection.format_detector import FormatDetector
 

@@ -3,11 +3,12 @@ ULPF Core Data Models & Schemas
 Implements OCSF 1.1.0 schemas, Raw Event Envelopes, Parser Definitions, and Verification types.
 """
 
-from enum import Enum
-from typing import Dict, Any, Optional, List, Union
-from pydantic import BaseModel, Field
 import datetime
 import uuid
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 
 class FormatType(str, Enum):
@@ -71,10 +72,10 @@ class SourceMetadata(BaseModel):
     product: str = "unknown"
     detected_format: FormatType = FormatType.UNKNOWN
     collector_host: str = "ulpf-node-01"
-    client_ip: Optional[str] = None
+    client_ip: str | None = None
     transport: str = "api"  # udp, tcp, file, api
-    facility: Optional[int] = None
-    priority: Optional[int] = None
+    facility: int | None = None
+    priority: int | None = None
 
 
 # Raw Storage Info
@@ -89,59 +90,59 @@ class RawStorageRef(BaseModel):
 
 # Parsing Metadata
 class ParsingMetadata(BaseModel):
-    parser_used: Optional[str] = None
-    parser_version: Optional[str] = None
-    mapping_version: Optional[str] = "1.0.0"
-    template_id: Optional[int] = None
+    parser_used: str | None = None
+    parser_version: str | None = None
+    mapping_version: str | None = "1.0.0"
+    template_id: int | None = None
     confidence: float = 1.0
     parse_duration_ms: float = 0.0
-    unparsed_fields: Dict[str, Any] = Field(default_factory=dict)
-    errors: List[str] = Field(default_factory=list)
+    unparsed_fields: dict[str, Any] = Field(default_factory=dict)
+    errors: list[str] = Field(default_factory=list)
 
 
 # OCSF Sub-objects
 class OCSFEndpoint(BaseModel):
-    ip: Optional[str] = None
-    port: Optional[int] = None
-    hostname: Optional[str] = None
-    mac: Optional[str] = None
-    domain: Optional[str] = None
-    autonomous_system: Optional[Dict[str, Any]] = None
-    location: Optional[Dict[str, Any]] = None
-    zone: Optional[str] = None
+    ip: str | None = None
+    port: int | None = None
+    hostname: str | None = None
+    mac: str | None = None
+    domain: str | None = None
+    autonomous_system: dict[str, Any] | None = None
+    location: dict[str, Any] | None = None
+    zone: str | None = None
 
 
 class OCSFConnectionInfo(BaseModel):
-    protocol_name: Optional[str] = "TCP"
-    protocol_num: Optional[int] = 6
-    direction_id: Optional[int] = 1  # 1: Inbound, 2: Outbound, 3: Lateral
-    direction: Optional[str] = "Inbound"
-    tcp_flags: Optional[int] = None
-    boundary: Optional[str] = None
+    protocol_name: str | None = "TCP"
+    protocol_num: int | None = 6
+    direction_id: int | None = 1  # 1: Inbound, 2: Outbound, 3: Lateral
+    direction: str | None = "Inbound"
+    tcp_flags: int | None = None
+    boundary: str | None = None
 
 
 class OCSFTraffic(BaseModel):
-    bytes_in: Optional[int] = None
-    bytes_out: Optional[int] = None
-    bytes: Optional[int] = None
-    packets_in: Optional[int] = None
-    packets_out: Optional[int] = None
-    packets: Optional[int] = None
+    bytes_in: int | None = None
+    bytes_out: int | None = None
+    bytes: int | None = None
+    packets_in: int | None = None
+    packets_out: int | None = None
+    packets: int | None = None
 
 
 class OCSFMetadataProduct(BaseModel):
     name: str
     vendor_name: str
-    version: Optional[str] = None
-    feature: Optional[Dict[str, Any]] = None
+    version: str | None = None
+    feature: dict[str, Any] | None = None
 
 
 class OCSFMetadata(BaseModel):
     version: str = "1.1.0"
     product: OCSFMetadataProduct
-    original_time: Optional[str] = None
-    profiles: List[str] = Field(default_factory=list)
-    labels: List[str] = Field(default_factory=list)
+    original_time: str | None = None
+    profiles: list[str] = Field(default_factory=list)
+    labels: list[str] = Field(default_factory=list)
 
 
 # OCSF Base Event
@@ -151,19 +152,19 @@ class OCSFEventBase(BaseModel):
     class_name: str
     category_name: str
     activity_id: int = 1
-    activity_name: Optional[str] = None
+    activity_name: str | None = None
     severity_id: int = SeverityId.INFORMATIONAL.value
     severity: str = "Informational"
     status_id: int = 1  # 1: Success, 2: Failure, 99: Other
     status: str = "Success"
-    disposition_id: Optional[int] = DispositionId.ALLOWED.value
-    disposition: Optional[str] = "Allowed"
+    disposition_id: int | None = DispositionId.ALLOWED.value
+    disposition: str | None = "Allowed"
     time: int = Field(default_factory=lambda: int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000))
     time_dt: str = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
-    message: Optional[str] = None
+    message: str | None = None
     metadata: OCSFMetadata
-    raw_data: Optional[str] = None
-    unmapped: Dict[str, Any] = Field(default_factory=dict)
+    raw_data: str | None = None
+    unmapped: dict[str, Any] = Field(default_factory=dict)
 
 
 # OCSF 4001: Network Activity
@@ -172,14 +173,14 @@ class OCSFNetworkActivity(OCSFEventBase):
     category_uid: int = 4
     class_name: str = "Network Activity"
     category_name: str = "Network Activity"
-    src_endpoint: Optional[OCSFEndpoint] = None
-    dst_endpoint: Optional[OCSFEndpoint] = None
-    connection_info: Optional[OCSFConnectionInfo] = None
-    traffic: Optional[OCSFTraffic] = None
-    app_name: Optional[str] = None
-    action_id: Optional[int] = None
-    action: Optional[str] = None
-    rule: Optional[Dict[str, Any]] = None
+    src_endpoint: OCSFEndpoint | None = None
+    dst_endpoint: OCSFEndpoint | None = None
+    connection_info: OCSFConnectionInfo | None = None
+    traffic: OCSFTraffic | None = None
+    app_name: str | None = None
+    action_id: int | None = None
+    action: str | None = None
+    rule: dict[str, Any] | None = None
 
 
 # OCSF 2001: Security Finding
@@ -188,12 +189,12 @@ class OCSFSecurityFinding(OCSFEventBase):
     category_uid: int = 2
     class_name: str = "Security Finding"
     category_name: str = "Findings"
-    finding_info: Dict[str, Any] = Field(default_factory=dict)
-    src_endpoint: Optional[OCSFEndpoint] = None
-    dst_endpoint: Optional[OCSFEndpoint] = None
-    attacks: Optional[List[Dict[str, Any]]] = None
-    confidence_id: Optional[int] = None
-    confidence: Optional[str] = None
+    finding_info: dict[str, Any] = Field(default_factory=dict)
+    src_endpoint: OCSFEndpoint | None = None
+    dst_endpoint: OCSFEndpoint | None = None
+    attacks: list[dict[str, Any]] | None = None
+    confidence_id: int | None = None
+    confidence: str | None = None
 
 
 # The Universal Normalized Event Envelope
@@ -203,16 +204,16 @@ class EventEnvelope(BaseModel):
     source: SourceMetadata = Field(default_factory=SourceMetadata)
     raw: RawStorageRef
     parsing: ParsingMetadata = Field(default_factory=ParsingMetadata)
-    ocsf: Optional[Dict[str, Any]] = None
-    traceability: Dict[str, Any] = Field(default_factory=dict)
+    ocsf: dict[str, Any] | None = None
+    traceability: dict[str, Any] = Field(default_factory=dict)
 
 
 # Parser Definition Schema
 class ParserRule(BaseModel):
     field_name: str
     target_ocsf_field: str
-    transform: Optional[str] = None  # to_int, to_ip, to_lower, map_severity, etc.
-    default_value: Optional[Any] = None
+    transform: str | None = None  # to_int, to_ip, to_lower, map_severity, etc.
+    default_value: Any | None = None
 
 
 class ParserDefinition(BaseModel):
@@ -222,22 +223,22 @@ class ParserDefinition(BaseModel):
     format: FormatType
     version: str = "1.0.0"
     parser_type: str = "regex"  # regex, grok, kv, json, drain3_template
-    pattern: Optional[str] = None
-    rules: List[ParserRule] = Field(default_factory=list)
+    pattern: str | None = None
+    rules: list[ParserRule] = Field(default_factory=list)
     target_class: str = "Network Activity"
     target_class_uid: int = 4001
     status: ParserStatus = ParserStatus.ACTIVE
     created_at: str = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
     author: str = "system"
-    sample_raw: Optional[str] = None
+    sample_raw: str | None = None
 
 
 # Drain3 Onboarding Models
 class TemplateVariable(BaseModel):
     var_index: int
     placeholder: str  # e.g., <IP_1>, <NUM_2>, <STR_3>
-    sample_values: List[str] = Field(default_factory=list)
+    sample_values: list[str] = Field(default_factory=list)
     inferred_type: str = "string"  # ipv4, ipv6, port, timestamp, integer, float, action, severity, string
     suggested_ocsf_field: str = "unmapped"
     confidence: float = 0.8
@@ -250,17 +251,17 @@ class OnboardingSession(BaseModel):
     format: FormatType = FormatType.PROPRIETARY
     discovered_template: str
     template_id: int
-    raw_sample_logs: List[str] = Field(default_factory=list)
-    variables: List[TemplateVariable] = Field(default_factory=list)
+    raw_sample_logs: list[str] = Field(default_factory=list)
+    variables: list[TemplateVariable] = Field(default_factory=list)
     target_class: str = "Network Activity"
     target_class_uid: int = 4001
     status: OnboardingStatus = OnboardingStatus.PENDING
     confidence_score: float = 0.85
     created_at: str = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
-    reviewed_by: Optional[str] = None
-    reviewed_at: Optional[str] = None
-    published_parser_id: Optional[str] = None
-    published_version: Optional[str] = None
+    reviewed_by: str | None = None
+    reviewed_at: str | None = None
+    published_parser_id: str | None = None
+    published_version: str | None = None
 
 
 # Integrity Verification Model
@@ -284,4 +285,4 @@ class AuditRecord(BaseModel):
     action: str  # e.g. "PARSER_PUBLISHED", "ONBOARDING_APPROVED", "REPLAY_TRIGGERED"
     resource_type: str
     resource_id: str
-    details: Dict[str, Any] = Field(default_factory=dict)
+    details: dict[str, Any] = Field(default_factory=dict)

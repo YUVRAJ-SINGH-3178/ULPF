@@ -3,13 +3,14 @@ Parser Registry API Endpoints
 Cataloging, Testing, Versioning, and Publishing Log Parsers.
 """
 
-from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, Body
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from ulpf.packages.schemas.models import ParserDefinition, UserRole
 from ulpf.apps.api.auth import get_current_user, require_roles
 from ulpf.apps.api.routes.events import get_orchestrator
+from ulpf.packages.schemas.models import ParserDefinition, UserRole
 from ulpf.packages.security.sanitization import validate_safe_identifier
 
 router = APIRouter(prefix="/parsers", tags=["Parser Registry"])
@@ -17,21 +18,21 @@ router = APIRouter(prefix="/parsers", tags=["Parser Registry"])
 
 class ParserTestRequest(BaseModel):
     sample_payload: str
-    version: Optional[str] = None
+    version: str | None = None
 
 
-@router.get("", response_model=List[Dict[str, Any]])
-def list_parsers(user: Dict[str, Any] = Depends(get_current_user)):
+@router.get("", response_model=list[dict[str, Any]])
+def list_parsers(user: dict[str, Any] = Depends(get_current_user)):
     """Lists all registered parsers, versions, and statuses."""
     orch = get_orchestrator()
     return orch.parser_registry.list_parsers()
 
 
-@router.get("/{parser_id}", response_model=Dict[str, Any])
+@router.get("/{parser_id}", response_model=dict[str, Any])
 def get_parser_details(
     parser_id: str,
-    version: Optional[str] = None,
-    user: Dict[str, Any] = Depends(get_current_user)
+    version: str | None = None,
+    user: dict[str, Any] = Depends(get_current_user)
 ):
     """Retrieves specific parser definition and rules."""
     validate_safe_identifier(parser_id, "parser_id")
@@ -51,10 +52,10 @@ def get_parser_details(
     }
 
 
-@router.post("", response_model=Dict[str, Any])
+@router.post("", response_model=dict[str, Any])
 def create_or_update_parser(
     p_def: ParserDefinition,
-    user: Dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.REVIEWER]))
+    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.REVIEWER]))
 ):
     """Registers a new or versioned parser. Active parsers cannot be overwritten in place."""
     validate_safe_identifier(p_def.parser_id, "parser_id")
@@ -66,11 +67,11 @@ def create_or_update_parser(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/{parser_id}/test", response_model=Dict[str, Any])
+@router.post("/{parser_id}/test", response_model=dict[str, Any])
 def test_parser(
     parser_id: str,
     req: ParserTestRequest,
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: dict[str, Any] = Depends(get_current_user)
 ):
     """Executes a dry-run test of a parser against a sample raw log."""
     validate_safe_identifier(parser_id, "parser_id")

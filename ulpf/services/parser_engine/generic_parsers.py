@@ -5,7 +5,7 @@ Fallback parsers for standard formatted telemetry.
 
 import json
 import re
-from typing import Dict, Any, Optional
+from typing import Any
 
 from ulpf.packages.schemas.models import FormatType, SourceMetadata
 from ulpf.services.parser_engine.base import BaseParser
@@ -35,10 +35,10 @@ class GenericRFC5424Parser(BaseParser):
         )
         self.pattern = re.compile(r"^<(\d{1,3})>1\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)?\s*(.*)$", re.DOTALL)
 
-    def matches(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> bool:
+    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
         return bool(self.pattern.match(raw_payload.strip()))
 
-    def parse_fields(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> Dict[str, Any]:
+    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
         raw = raw_payload.strip()
         m = self.pattern.match(raw)
         if not m:
@@ -92,7 +92,7 @@ class GenericRFC5424Parser(BaseParser):
         self._extract_ips_from_msg(msg, parsed)
         return parsed
 
-    def _extract_ips_from_msg(self, msg: str, parsed: Dict[str, Any]):
+    def _extract_ips_from_msg(self, msg: str, parsed: dict[str, Any]):
         if not msg:
             return
         ips = re.findall(r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b", msg)
@@ -127,10 +127,10 @@ class GenericRFC3164Parser(BaseParser):
         )
         self.pattern = re.compile(r"^<(\d{1,3})>([A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+([^\s:]+)\s+([^:]+):\s*(.*)$", re.DOTALL)
 
-    def matches(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> bool:
+    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
         return bool(self.pattern.match(raw_payload.strip()))
 
-    def parse_fields(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> Dict[str, Any]:
+    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
         raw = raw_payload.strip()
         m = self.pattern.match(raw)
         if not m:
@@ -201,11 +201,11 @@ class GenericJSONParser(BaseParser):
             target_class_uid=4001
         )
 
-    def matches(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> bool:
+    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
         raw = raw_payload.strip()
         return (raw.startswith("{") and raw.endswith("}"))
 
-    def parse_fields(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> Dict[str, Any]:
+    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
         data = json.loads(raw_payload.strip())
         if not isinstance(data, dict):
             raise ValueError("Generic JSON payload must be an object")

@@ -3,15 +3,15 @@ Immutable Lossless Raw Storage Engine
 Guarantees byte-for-byte preservation and SHA-256 cryptographic integrity verification.
 """
 
+import datetime
 import hashlib
 import json
 import os
 import threading
 from pathlib import Path
-from typing import Tuple, Optional, Dict, Any
+from typing import Any
 
 from ulpf.packages.schemas.models import RawStorageRef, VerificationResult
-import datetime
 
 
 class ImmutableRawStore:
@@ -24,7 +24,7 @@ class ImmutableRawStore:
         self.base_dir = Path(base_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
-        self._index: Dict[str, Dict[str, Any]] = {}
+        self._index: dict[str, dict[str, Any]] = {}
         self._load_existing_index()
 
     def _load_existing_index(self):
@@ -45,7 +45,7 @@ class ImmutableRawStore:
         self,
         raw_payload: str,
         event_id: str,
-        source_meta: Optional[Dict[str, Any]] = None,
+        source_meta: dict[str, Any] | None = None,
         bucket: str = "ulpf-raw-events"
     ) -> RawStorageRef:
         """
@@ -80,7 +80,7 @@ class ImmutableRawStore:
                 if actual_sha != sha256_hash:
                     if raw_tmp.exists():
                         raw_tmp.unlink()
-                    raise IOError(f"Atomic raw store write integrity failure for event {event_id}: hash mismatch")
+                    raise OSError(f"Atomic raw store write integrity failure for event {event_id}: hash mismatch")
 
                 # 3. Write metadata to temp file
                 meta_data = {
@@ -126,7 +126,7 @@ class ImmutableRawStore:
             compression="none"
         )
 
-    def retrieve_raw(self, event_id: str) -> Optional[Tuple[str, RawStorageRef]]:
+    def retrieve_raw(self, event_id: str) -> tuple[str, RawStorageRef] | None:
         """
         Retrieves original raw payload and its storage reference by event_id.
         """

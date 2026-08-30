@@ -4,12 +4,11 @@ Provides strict path traversal protection, identifier validation, and sliding-wi
 """
 
 import re
-import time
 import threading
-from typing import Dict, Tuple
+import time
 from collections import deque
-from fastapi import HTTPException, Request, status
 
+from fastapi import HTTPException, status
 
 IDENTIFIER_REGEX = re.compile(r"^[a-zA-Z0-9_\-\.:]+$")
 
@@ -54,7 +53,7 @@ class InMemoryRateLimiter:
     def __init__(self, requests_per_minute: int = 60):
         self.rpm = requests_per_minute
         self._lock = threading.Lock()
-        self._clients: Dict[str, deque] = {}
+        self._clients: dict[str, deque] = {}
 
     def check_rate_limit(self, client_ip: str) -> bool:
         """Returns True if request is permitted, False if rate limit exceeded."""

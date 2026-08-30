@@ -4,13 +4,13 @@ Generated when an unknown log format is onboarded through Drain3 template mining
 """
 
 import re
-from typing import Dict, Any, Optional, List
+from typing import Any
 
 from ulpf.packages.schemas.models import (
     FormatType,
+    ParserRule,
     ParserStatus,
     SourceMetadata,
-    ParserRule
 )
 from ulpf.services.parser_engine.base import BaseParser
 
@@ -28,7 +28,7 @@ class Drain3DynamicParser(BaseParser):
         version: str,
         template_str: str,
         compiled_regex: str,
-        rules: List[ParserRule],
+        rules: list[ParserRule],
         target_class: str = "Network Activity",
         target_class_uid: int = 4001,
         status: ParserStatus = ParserStatus.ACTIVE
@@ -51,12 +51,12 @@ class Drain3DynamicParser(BaseParser):
         except re.error:
             self._pattern = None
 
-    def matches(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> bool:
+    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
         if not self._pattern:
             return False
         return bool(self._pattern.search(raw_payload.strip()))
 
-    def parse_fields(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> Dict[str, Any]:
+    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
         raw = raw_payload.strip()
         if not self._pattern:
             raise ValueError(f"Dynamic parser {self.parser_id} has invalid regex pattern")
@@ -66,7 +66,7 @@ class Drain3DynamicParser(BaseParser):
             raise ValueError(f"Payload does not match dynamic template: {self.template_str}")
 
         extracted = m.groupdict()
-        parsed: Dict[str, Any] = {
+        parsed: dict[str, Any] = {
             "device_vendor": self.vendor,
             "device_product": self.product,
             "message": raw,
@@ -102,7 +102,7 @@ class Drain3DynamicParser(BaseParser):
 
         return parsed
 
-    def _apply_transform(self, val: Any, transform: Optional[str]) -> Any:
+    def _apply_transform(self, val: Any, transform: str | None) -> Any:
         if not transform:
             return val
         t = transform.lower()

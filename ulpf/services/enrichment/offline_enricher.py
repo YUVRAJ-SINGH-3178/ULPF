@@ -4,7 +4,7 @@ Provides GeoIP resolution, RFC1918 classification, and internal enterprise asset
 """
 
 import ipaddress
-from typing import Dict, Any, Optional
+from typing import Any
 
 
 class OfflineEnricher:
@@ -14,7 +14,7 @@ class OfflineEnricher:
     """
 
     # Static Enterprise Asset Inventory for NTRO / Enterprise Perimeter
-    ASSET_INVENTORY: Dict[str, Dict[str, Any]] = {
+    ASSET_INVENTORY: dict[str, dict[str, Any]] = {
         "10.0.0.1": {"name": "CORE-GW-01", "role": "Core Perimeter Gateway", "zone": "DMZ", "criticality": "High"},
         "10.0.0.5": {"name": "DC-PRIMARY-01", "role": "Domain Controller Active Directory", "zone": "Internal-Core", "criticality": "Critical"},
         "10.0.0.10": {"name": "DB-PROD-CLUSTER", "role": "Primary Database Cluster", "zone": "Database-Secure", "criticality": "Critical"},
@@ -34,7 +34,7 @@ class OfflineEnricher:
         {"network": "185.220.101.0/24", "country": "Netherlands", "country_code": "NL", "city": "Amsterdam", "as_name": "Tor Exit Node Network", "as_num": 60729}
     ]
 
-    def enrich(self, ocsf_doc: Dict[str, Any]) -> Dict[str, Any]:
+    def enrich(self, ocsf_doc: dict[str, Any]) -> dict[str, Any]:
         """
         Enriches src_endpoint and dst_endpoint in place.
         """
@@ -44,7 +44,7 @@ class OfflineEnricher:
             self._enrich_endpoint(ocsf_doc["dst_endpoint"])
         return ocsf_doc
 
-    def _enrich_endpoint(self, ep: Dict[str, Any]):
+    def _enrich_endpoint(self, ep: dict[str, Any]):
         ip_str = ep.get("ip")
         if not ip_str:
             return

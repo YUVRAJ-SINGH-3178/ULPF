@@ -4,10 +4,11 @@ Streaming online prefix-tree miner for clustering unknown log formats and extrac
 """
 
 import os
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any
+
 from drain3 import TemplateMiner
-from drain3.template_miner_config import TemplateMinerConfig
 from drain3.masking import MaskingInstruction
+from drain3.template_miner_config import TemplateMinerConfig
 
 
 class Drain3Engine:
@@ -37,7 +38,7 @@ class Drain3Engine:
 
         self.miner = TemplateMiner(config=config)
 
-    def mine_log(self, raw_message: str) -> Dict[str, Any]:
+    def mine_log(self, raw_message: str) -> dict[str, Any]:
         """
         Processes a raw log line, updates the prefix tree, and returns the cluster result.
         """
@@ -60,7 +61,7 @@ class Drain3Engine:
             "sample_message": cleaned
         }
 
-    def match_template(self, raw_message: str) -> Optional[Dict[str, Any]]:
+    def match_template(self, raw_message: str) -> dict[str, Any] | None:
         """Matches a message against existing mined templates."""
         cleaned = raw_message.strip()
         cluster = self.miner.match(cleaned)

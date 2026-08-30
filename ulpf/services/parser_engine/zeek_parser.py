@@ -4,7 +4,7 @@ Parses Zeek conn.log JSON and TSV records.
 """
 
 import json
-from typing import Dict, Any, Optional
+from typing import Any
 
 from ulpf.packages.schemas.models import FormatType, SourceMetadata
 from ulpf.services.parser_engine.base import BaseParser
@@ -32,13 +32,13 @@ class ZeekConnParser(BaseParser):
             target_class_uid=4001
         )
 
-    def matches(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> bool:
+    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
         raw = raw_payload.strip()
         if raw.startswith("{") and raw.endswith("}"):
             return ("id.orig_h" in raw or "id.resp_h" in raw or ("ts" in raw and "conn_state" in raw))
         return False
 
-    def parse_fields(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> Dict[str, Any]:
+    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
         data = json.loads(raw_payload.strip())
         if not isinstance(data, dict):
             raise ValueError("Zeek payload is not a JSON object")
@@ -48,7 +48,7 @@ class ZeekConnParser(BaseParser):
         resp_h = data.get("id.resp_h") or data.get("dst_ip") or data.get("resp_h")
         resp_p = data.get("id.resp_p") or data.get("dst_port") or data.get("resp_p")
 
-        parsed: Dict[str, Any] = {
+        parsed: dict[str, Any] = {
             "device_vendor": "Zeek",
             "device_product": "Network-Monitor",
             "uid": data.get("uid"),

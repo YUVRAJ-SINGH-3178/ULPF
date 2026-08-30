@@ -3,13 +3,14 @@ Pipeline Telemetry, Real-time Health, and Prometheus Metrics API Endpoints
 Provides deep operational inspection, component diagnostics, and Prometheus OpenMetrics scraping.
 """
 
-import time
 import os
-import psutil
-import duckdb
+import time
 from pathlib import Path
-from typing import Dict, Any, Optional
-from fastapi import APIRouter, Depends, Response, status, HTTPException
+from typing import Any
+
+import duckdb
+import psutil
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from ulpf.apps.api.auth import get_current_user
 from ulpf.apps.api.routes.events import get_orchestrator
@@ -18,8 +19,8 @@ from ulpf.packages.config.settings import get_settings
 router = APIRouter(prefix="/pipeline", tags=["Pipeline Operations"])
 
 
-@router.get("/metrics", response_model=Dict[str, Any])
-def get_pipeline_metrics(user: Dict[str, Any] = Depends(get_current_user)):
+@router.get("/metrics", response_model=dict[str, Any])
+def get_pipeline_metrics(user: dict[str, Any] = Depends(get_current_user)):
     """Fetches real-time throughput (EPS), latency percentiles, and SIEM search summary stats."""
     orch = get_orchestrator()
     rt_metrics = orch.get_realtime_metrics()
@@ -89,11 +90,11 @@ def get_prometheus_metrics(response: Response):
         response.headers["Content-Type"] = "text/plain; version=0.0.4; charset=utf-8"
         return Response(content="\n".join(lines), media_type="text/plain; version=0.0.4; charset=utf-8")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate prometheus metrics: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate prometheus metrics: {e!s}")
 
 
-@router.get("/health", response_model=Dict[str, Any])
-def get_system_health(response: Response, user: Dict[str, Any] = Depends(get_current_user)):
+@router.get("/health", response_model=dict[str, Any])
+def get_system_health(response: Response, user: dict[str, Any] = Depends(get_current_user)):
     """
     Comprehensive Deep Health Check.
     Inspects:
@@ -120,7 +121,7 @@ def get_system_health(response: Response, user: Dict[str, Any] = Depends(get_cur
         conn.close()
         subsystem_status["sqlite_search_index"] = f"HEALTHY ({row_count} records indexed)"
     except Exception as e:
-        subsystem_status["sqlite_search_index"] = f"DEGRADED ({str(e)})"
+        subsystem_status["sqlite_search_index"] = f"DEGRADED ({e!s})"
         is_healthy = False
         issues.append(f"SQLite Index error: {e}")
 
@@ -134,7 +135,7 @@ def get_system_health(response: Response, user: Dict[str, Any] = Depends(get_cur
         else:
             raise ValueError("DuckDB sanity calculation failed")
     except Exception as e:
-        subsystem_status["duckdb_engine"] = f"DEGRADED ({str(e)})"
+        subsystem_status["duckdb_engine"] = f"DEGRADED ({e!s})"
         is_healthy = False
         issues.append(f"DuckDB error: {e}")
 
@@ -153,7 +154,7 @@ def get_system_health(response: Response, user: Dict[str, Any] = Depends(get_cur
         else:
             subsystem_status["storage_volume"] = f"HEALTHY ({free_mb:.1f} MB free)"
     except Exception as e:
-        subsystem_status["storage_volume"] = f"DEGRADED ({str(e)})"
+        subsystem_status["storage_volume"] = f"DEGRADED ({e!s})"
         is_healthy = False
         issues.append(f"Storage volume check error: {e}")
 

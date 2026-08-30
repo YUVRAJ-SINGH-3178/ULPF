@@ -3,8 +3,7 @@ OCSF 1.1.0 Controlled Enumerations & Type Constants
 Compliant with Linux Foundation / Open Cybersecurity Schema Framework (OCSF 1.1.0).
 """
 
-from enum import IntEnum, Enum
-from typing import Dict, Tuple, Optional
+from enum import IntEnum
 
 
 class OCSFCategory(IntEnum):
@@ -83,7 +82,7 @@ class OCSFNetworkActivityId(IntEnum):
 
 
 # Helper lookup dictionaries
-SEVERITY_NAMES: Dict[int, str] = {
+SEVERITY_NAMES: dict[int, str] = {
     0: "Unknown",
     1: "Informational",
     2: "Low",
@@ -94,7 +93,7 @@ SEVERITY_NAMES: Dict[int, str] = {
     99: "Other"
 }
 
-DISPOSITION_NAMES: Dict[int, str] = {
+DISPOSITION_NAMES: dict[int, str] = {
     0: "Unknown",
     1: "Allowed",
     2: "Blocked",
@@ -106,14 +105,14 @@ DISPOSITION_NAMES: Dict[int, str] = {
     99: "Other"
 }
 
-STATUS_NAMES: Dict[int, str] = {
+STATUS_NAMES: dict[int, str] = {
     0: "Unknown",
     1: "Success",
     2: "Failure",
     99: "Other"
 }
 
-DIRECTION_NAMES: Dict[int, str] = {
+DIRECTION_NAMES: dict[int, str] = {
     0: "Unknown",
     1: "Inbound",
     2: "Outbound",
@@ -121,7 +120,7 @@ DIRECTION_NAMES: Dict[int, str] = {
     99: "Other"
 }
 
-PROTOCOL_NUMBERS: Dict[str, int] = {
+PROTOCOL_NUMBERS: dict[str, int] = {
     "HOPOPT": 0,
     "ICMP": 1,
     "IGMP": 2,
@@ -142,7 +141,7 @@ PROTOCOL_NUMBERS: Dict[str, int] = {
 }
 
 
-def normalize_protocol(proto: Optional[str]) -> Tuple[str, int]:
+def normalize_protocol(proto: str | None) -> tuple[str, int]:
     """Resolves protocol name and number."""
     if not proto:
         return "TCP", 6

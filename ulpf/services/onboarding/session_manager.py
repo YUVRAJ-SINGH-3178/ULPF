@@ -3,22 +3,22 @@ Unknown Log Onboarding Session Manager
 Orchestrates template mining, candidate mapping review, human approval, and post-onboarding replay.
 """
 
+import datetime
 import json
 import threading
 import uuid
-import datetime
+from collections.abc import Callable
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Callable
+from typing import Any
 
 from ulpf.packages.schemas.models import (
+    AuditRecord,
+    FormatType,
     OnboardingSession,
     OnboardingStatus,
-    TemplateVariable,
     ParserDefinition,
     ParserRule,
     ParserStatus,
-    FormatType,
-    AuditRecord
 )
 from ulpf.services.onboarding.drain_miner import Drain3Engine
 from ulpf.services.onboarding.field_discovery import FieldDiscoveryEngine
@@ -33,11 +33,11 @@ class OnboardingSessionManager:
     def __init__(
         self,
         parser_registry: ParserRegistry,
-        drain_engine: Optional[Drain3Engine] = None,
-        field_engine: Optional[FieldDiscoveryEngine] = None,
+        drain_engine: Drain3Engine | None = None,
+        field_engine: FieldDiscoveryEngine | None = None,
         persistence_dir: str = "data/onboarding_sessions",
-        replay_callback: Optional[Callable[[List[str]], None]] = None,
-        audit_sink: Optional[Callable[[AuditRecord], None]] = None
+        replay_callback: Callable[[list[str]], None] | None = None,
+        audit_sink: Callable[[AuditRecord], None] | None = None
     ):
         self.parser_registry = parser_registry
         self.drain_engine = drain_engine or Drain3Engine()
@@ -48,10 +48,10 @@ class OnboardingSessionManager:
         self.audit_sink = audit_sink
         
         self._lock = threading.Lock()
-        self._sessions: Dict[str, OnboardingSession] = {}
-        self._compiled_regexes: Dict[str, str] = {}
-        self._rules_by_session: Dict[str, List[ParserRule]] = {}
-        self._audit_trail: List[AuditRecord] = []
+        self._sessions: dict[str, OnboardingSession] = {}
+        self._compiled_regexes: dict[str, str] = {}
+        self._rules_by_session: dict[str, list[ParserRule]] = {}
+        self._audit_trail: list[AuditRecord] = []
 
         self._load_persisted_sessions()
         self._load_persisted_audits()
@@ -98,8 +98,8 @@ class OnboardingSessionManager:
     def process_unknown_log(
         self,
         raw_payload: str,
-        vendor_hint: Optional[str] = None,
-        product_hint: Optional[str] = None
+        vendor_hint: str | None = None,
+        product_hint: str | None = None
     ) -> OnboardingSession:
         """
         Mines the unknown log, clusters with Drain3, extracts candidate fields, and updates/creates session.
@@ -159,11 +159,11 @@ class OnboardingSessionManager:
             self._persist_session(session)
             return session
 
-    def list_sessions(self) -> List[Dict[str, Any]]:
+    def list_sessions(self) -> list[dict[str, Any]]:
         with self._lock:
             return [s.model_dump() for s in self._sessions.values()]
 
-    def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+    def get_session(self, session_id: str) -> dict[str, Any] | None:
         with self._lock:
             s = self._sessions.get(session_id)
             if not s:
@@ -178,8 +178,8 @@ class OnboardingSessionManager:
         session_id: str,
         var_index: int,
         target_ocsf_field: str,
-        inferred_type: Optional[str] = None,
-        transform: Optional[str] = None
+        inferred_type: str | None = None,
+        transform: str | None = None
     ) -> bool:
         """Updates human-reviewed field mappings for a candidate variable."""
         with self._lock:
@@ -208,9 +208,9 @@ class OnboardingSessionManager:
         self,
         session_id: str,
         reviewed_by: str = "security-reviewer",
-        custom_parser_id: Optional[str] = None,
+        custom_parser_id: str | None = None,
         version: str = "1.0.0"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         1. Validates reviewed mappings.
         2. Compiles a new versioned ParserDefinition and registers with ParserRegistry.
@@ -311,7 +311,7 @@ class OnboardingSessionManager:
             self._persist_audit_record(audit)
             return True
 
-    def get_audit_trail(self) -> List[Dict[str, Any]]:
+    def get_audit_trail(self) -> list[dict[str, Any]]:
         with self._lock:
             return [a.model_dump() for a in self._audit_trail]
 

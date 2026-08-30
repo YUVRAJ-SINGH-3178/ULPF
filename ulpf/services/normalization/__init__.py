@@ -2,33 +2,33 @@
 Normalization subsystem exports
 """
 from ulpf.services.normalization.enums import (
+    DIRECTION_NAMES,
+    DISPOSITION_NAMES,
+    SEVERITY_NAMES,
+    STATUS_NAMES,
     OCSFCategory,
     OCSFClass,
+    OCSFDirection,
+    OCSFDisposition,
+    OCSFNetworkActivityId,
     OCSFSeverity,
     OCSFStatus,
-    OCSFDisposition,
-    OCSFDirection,
-    OCSFNetworkActivityId,
-    SEVERITY_NAMES,
-    DISPOSITION_NAMES,
-    STATUS_NAMES,
-    DIRECTION_NAMES,
-    normalize_protocol
+    normalize_protocol,
 )
 from ulpf.services.normalization.ocsf_mapper import OCSFNormalizer
 
 __all__ = [
+    "DIRECTION_NAMES",
+    "DISPOSITION_NAMES",
+    "SEVERITY_NAMES",
+    "STATUS_NAMES",
     "OCSFCategory",
     "OCSFClass",
+    "OCSFDirection",
+    "OCSFDisposition",
+    "OCSFNetworkActivityId",
+    "OCSFNormalizer",
     "OCSFSeverity",
     "OCSFStatus",
-    "OCSFDisposition",
-    "OCSFDirection",
-    "OCSFNetworkActivityId",
-    "SEVERITY_NAMES",
-    "DISPOSITION_NAMES",
-    "STATUS_NAMES",
-    "DIRECTION_NAMES",
-    "normalize_protocol",
-    "OCSFNormalizer"
+    "normalize_protocol"
 ]

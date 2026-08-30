@@ -6,12 +6,12 @@ Enforces Ingestion validation, Parser validation, OCSF 1.1.0 schema compliance, 
 import ipaddress
 import re
 import uuid
-from typing import Dict, Any, List, Tuple
+from typing import Any
 
 from ulpf.packages.schemas.models import (
     EventEnvelope,
     ParsingMetadata,
-    VerificationResult
+    VerificationResult,
 )
 from ulpf.services.storage.raw_store import ImmutableRawStore
 
@@ -24,7 +24,7 @@ class PipelineValidator:
     def __init__(self, raw_store: ImmutableRawStore):
         self.raw_store = raw_store
 
-    def validate_ingestion(self, envelope: EventEnvelope) -> Tuple[bool, List[str]]:
+    def validate_ingestion(self, envelope: EventEnvelope) -> tuple[bool, list[str]]:
         """Stage 1: Validates raw payload integrity, bounds, and ingestion headers."""
         errors = []
         if not envelope.raw.raw_payload or not envelope.raw.raw_payload.strip():
@@ -43,14 +43,14 @@ class PipelineValidator:
 
         return len(errors) == 0, errors
 
-    def validate_parsing(self, parsed_fields: Dict[str, Any], meta: ParsingMetadata) -> Tuple[bool, List[str]]:
+    def validate_parsing(self, parsed_fields: dict[str, Any], meta: ParsingMetadata) -> tuple[bool, list[str]]:
         """Stage 2: Validates parser extraction outputs and parser errors."""
         errors = list(meta.errors)
         if not parsed_fields:
             errors.append("Parser Error: Parser produced no extracted fields")
         return len(errors) == 0, errors
 
-    def validate_ocsf(self, ocsf_doc: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    def validate_ocsf(self, ocsf_doc: dict[str, Any]) -> tuple[bool, list[str]]:
         """Stage 3: Validates OCSF 1.1.0 schema compliance."""
         errors = []
 
@@ -90,7 +90,7 @@ class PipelineValidator:
                 if "port" in ep and ep["port"] is not None:
                     if not (1 <= ep["port"] <= 65535):
                         errors.append(f"OCSF Validation Error: Port out of range in {ep_key}: {ep['port']}")
-                if "ip" in ep and ep["ip"]:
+                if ep.get("ip"):
                     # Clean and check IP format
                     ip_str = str(ep["ip"]).strip()
                     try:

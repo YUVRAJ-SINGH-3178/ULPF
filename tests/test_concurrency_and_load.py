@@ -6,12 +6,11 @@ and DuckDB Parquet schema consistency under load.
 """
 
 import concurrent.futures
-import pytest
-import duckdb
 from pathlib import Path
 
-from ulpf.services.pipeline_orchestrator import PipelineOrchestrator
+import duckdb
 
+from ulpf.services.pipeline_orchestrator import PipelineOrchestrator
 
 SAMPLE_LOG_TEMPLATES = [
     "<166>Aug 27 10:15:30 fw-edge-01 %ASA-6-302013: Built inbound TCP connection {id} for outside:198.51.100.25/{port} (198.51.100.25/{port}) to inside:10.0.0.5/54321 (10.0.0.5/54321)",

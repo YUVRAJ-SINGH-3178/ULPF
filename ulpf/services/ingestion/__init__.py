@@ -1,16 +1,16 @@
 """
 Ingestion subsystem exports
 """
-from ulpf.services.ingestion.raw_envelope import EnvelopeFactory
 from ulpf.services.ingestion.listeners import (
-    UDPSyslogListener,
+    FileBatchIngestor,
     TCPSyslogListener,
-    FileBatchIngestor
+    UDPSyslogListener,
 )
+from ulpf.services.ingestion.raw_envelope import EnvelopeFactory
 
 __all__ = [
     "EnvelopeFactory",
-    "UDPSyslogListener",
+    "FileBatchIngestor",
     "TCPSyslogListener",
-    "FileBatchIngestor"
+    "UDPSyslogListener"
 ]

@@ -4,7 +4,7 @@ Parses Squid native access logs and HTTP activity.
 """
 
 import re
-from typing import Dict, Any, Optional
+from typing import Any
 
 from ulpf.packages.schemas.models import FormatType, SourceMetadata
 from ulpf.services.parser_engine.base import BaseParser
@@ -36,10 +36,10 @@ class SquidProxyParser(BaseParser):
             r"^(\d+\.\d+)\s+(\d+)\s+([0-9.]+)\s+([A-Z_]+)/(\d{3})\s+(\d+)\s+([A-Z]+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)$"
         )
 
-    def matches(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> bool:
+    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
         return bool(self.pattern.match(raw_payload.strip())) or "TCP_DENIED/" in raw_payload or "TCP_MISS/" in raw_payload
 
-    def parse_fields(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> Dict[str, Any]:
+    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
         raw = raw_payload.strip()
         m = self.pattern.match(raw)
         peer_info = ""
@@ -77,7 +77,7 @@ class SquidProxyParser(BaseParser):
         disposition = "Blocked" if "DENIED" in cache_status or status_code in [403, 401] else "Allowed"
         disposition_id = 2 if disposition == "Blocked" else 1
 
-        parsed: Dict[str, Any] = {
+        parsed: dict[str, Any] = {
             "device_vendor": "Squid",
             "device_product": "Proxy",
             "src_ip": client_ip,

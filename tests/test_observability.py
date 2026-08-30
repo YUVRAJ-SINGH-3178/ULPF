@@ -6,8 +6,8 @@ Verifies:
 3. Pipeline metrics accuracy under traffic.
 """
 
-import pytest
 from fastapi.testclient import TestClient
+
 from ulpf.apps.api.main import app
 
 client = TestClient(app)

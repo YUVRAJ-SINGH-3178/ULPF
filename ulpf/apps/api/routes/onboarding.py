@@ -3,13 +3,14 @@ Unknown Log Auto-Onboarding API Endpoints
 Drain3 template discovery, variable review, OCSF mapping adjustment, human approval, and automated replay.
 """
 
-from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, Body
+from typing import Any
+
+from fastapi import APIRouter, Body, Depends, HTTPException
 from pydantic import BaseModel
 
-from ulpf.packages.schemas.models import UserRole
 from ulpf.apps.api.auth import get_current_user, require_roles
 from ulpf.apps.api.routes.events import get_orchestrator
+from ulpf.packages.schemas.models import UserRole
 from ulpf.packages.security.sanitization import validate_safe_identifier
 
 router = APIRouter(prefix="/onboarding", tags=["Drain3 Auto-Onboarding"])
@@ -18,32 +19,32 @@ router = APIRouter(prefix="/onboarding", tags=["Drain3 Auto-Onboarding"])
 class UpdateMappingRequest(BaseModel):
     var_index: int
     target_ocsf_field: str
-    inferred_type: Optional[str] = None
-    transform: Optional[str] = None
+    inferred_type: str | None = None
+    transform: str | None = None
 
 
 class ApproveSessionRequest(BaseModel):
-    custom_parser_id: Optional[str] = None
-    version: Optional[str] = "1.0.0"
+    custom_parser_id: str | None = None
+    version: str | None = "1.0.0"
 
 
 class MineRawLogRequest(BaseModel):
     raw_payload: str
-    vendor_hint: Optional[str] = None
-    product_hint: Optional[str] = None
+    vendor_hint: str | None = None
+    product_hint: str | None = None
 
 
-@router.get("", response_model=List[Dict[str, Any]])
-def list_onboarding_sessions(user: Dict[str, Any] = Depends(get_current_user)):
+@router.get("", response_model=list[dict[str, Any]])
+def list_onboarding_sessions(user: dict[str, Any] = Depends(get_current_user)):
     """Lists all active and historical onboarding sessions."""
     orch = get_orchestrator()
     return orch.onboarding_manager.list_sessions()
 
 
-@router.get("/{session_id}", response_model=Dict[str, Any])
+@router.get("/{session_id}", response_model=dict[str, Any])
 def get_onboarding_session(
     session_id: str,
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: dict[str, Any] = Depends(get_current_user)
 ):
     """Retrieves session details, discovered template, variables, sample values, and OCSF suggestions."""
     validate_safe_identifier(session_id, "session_id")
@@ -54,10 +55,10 @@ def get_onboarding_session(
     return session
 
 
-@router.post("/mine", response_model=Dict[str, Any])
+@router.post("/mine", response_model=dict[str, Any])
 def mine_unknown_log_manually(
     req: MineRawLogRequest,
-    user: Dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.REVIEWER, UserRole.OPERATOR]))
+    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.REVIEWER, UserRole.OPERATOR]))
 ):
     """Feeds an unseen raw log directly to the Drain3 miner to trigger template discovery."""
     orch = get_orchestrator()
@@ -69,11 +70,11 @@ def mine_unknown_log_manually(
     return session.model_dump()
 
 
-@router.put("/{session_id}/mapping", response_model=Dict[str, Any])
+@router.put("/{session_id}/mapping", response_model=dict[str, Any])
 def update_variable_mapping(
     session_id: str,
     req: UpdateMappingRequest,
-    user: Dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.REVIEWER]))
+    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.REVIEWER]))
 ):
     """
     Human-in-the-Loop Override:
@@ -93,11 +94,11 @@ def update_variable_mapping(
     return {"status": "success", "session_id": session_id, "var_index": req.var_index, "mapped_to": req.target_ocsf_field}
 
 
-@router.post("/{session_id}/approve", response_model=Dict[str, Any])
+@router.post("/{session_id}/approve", response_model=dict[str, Any])
 def approve_and_publish_session(
     session_id: str,
     req: ApproveSessionRequest = Body(...),
-    user: Dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.REVIEWER]))
+    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.REVIEWER]))
 ):
     """
     Human Approval & Publish:
@@ -121,11 +122,11 @@ def approve_and_publish_session(
     return res
 
 
-@router.post("/{session_id}/reject", response_model=Dict[str, Any])
+@router.post("/{session_id}/reject", response_model=dict[str, Any])
 def reject_session(
     session_id: str,
     reason: str = Body(..., embed=True),
-    user: Dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.REVIEWER]))
+    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.REVIEWER]))
 ):
     """Rejects an onboarding session."""
     validate_safe_identifier(session_id, "session_id")
@@ -140,8 +141,8 @@ def reject_session(
     return {"status": "rejected", "session_id": session_id}
 
 
-@router.get("/audit/logs", response_model=List[Dict[str, Any]])
-def get_onboarding_audit_trail(user: Dict[str, Any] = Depends(get_current_user)):
+@router.get("/audit/logs", response_model=list[dict[str, Any]])
+def get_onboarding_audit_trail(user: dict[str, Any] = Depends(get_current_user)):
     """Retrieves immutable audit trail of onboarding approvals and parser changes."""
     orch = get_orchestrator()
     return orch.onboarding_manager.get_audit_trail()

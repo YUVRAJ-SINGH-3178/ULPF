@@ -3,32 +3,32 @@ Error & Replay API Endpoints
 Dead-letter queue inspection and log re-execution.
 """
 
-from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from typing import Any
 
-from ulpf.packages.schemas.models import UserRole
+from fastapi import APIRouter, Depends, HTTPException
+
 from ulpf.apps.api.auth import get_current_user, require_roles
 from ulpf.apps.api.routes.events import get_orchestrator
+from ulpf.packages.schemas.models import UserRole
 from ulpf.packages.security.sanitization import validate_safe_identifier
 
 router = APIRouter(prefix="/errors", tags=["Error & Replay Queue"])
 
 
-@router.get("", response_model=List[Dict[str, Any]])
+@router.get("", response_model=list[dict[str, Any]])
 def list_errors(
-    status: Optional[str] = None,
-    user: Dict[str, Any] = Depends(get_current_user)
+    status: str | None = None,
+    user: dict[str, Any] = Depends(get_current_user)
 ):
     """Lists dead-letter events with error reasons and stage."""
     orch = get_orchestrator()
     return orch.error_queue.list_errors(status)
 
 
-@router.post("/{error_id}/replay", response_model=Dict[str, Any])
+@router.post("/{error_id}/replay", response_model=dict[str, Any])
 def replay_single_error(
     error_id: str,
-    user: Dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR]))
+    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR]))
 ):
     """Re-executes a failed log through the current pipeline and active parsers."""
     validate_safe_identifier(error_id, "error_id")
@@ -50,9 +50,9 @@ def replay_single_error(
     }
 
 
-@router.post("/replay-all", response_model=Dict[str, Any])
+@router.post("/replay-all", response_model=dict[str, Any])
 def replay_all_unresolved(
-    user: Dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR]))
+    user: dict[str, Any] = Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR]))
 ):
     """Bulk replays all unresolved dead-letter logs."""
     orch = get_orchestrator()

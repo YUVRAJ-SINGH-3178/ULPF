@@ -5,7 +5,7 @@ Format: LEEF:Version|Vendor|Product|Version|EventID|[Delimiter|]Extension
 """
 
 import re
-from typing import Dict, Any, Optional
+from typing import Any
 
 from ulpf.packages.schemas.models import FormatType, SourceMetadata
 from ulpf.services.parser_engine.base import BaseParser
@@ -33,10 +33,10 @@ class LEEFParser(BaseParser):
             target_class_uid=4001
         )
 
-    def matches(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> bool:
+    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
         return "LEEF:" in raw_payload
 
-    def parse_fields(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> Dict[str, Any]:
+    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
         raw = raw_payload.strip()
         leef_start = raw.find("LEEF:")
         if leef_start == -1:
@@ -54,7 +54,7 @@ class LEEFParser(BaseParser):
         version = parts[3].strip()
         event_id = parts[4].strip()
 
-        parsed: Dict[str, Any] = {
+        parsed: dict[str, Any] = {
             "leef_version": ver_tag,
             "device_vendor": vendor,
             "device_product": product,
@@ -102,7 +102,7 @@ class LEEFParser(BaseParser):
         self._normalize_common_leef_fields(parsed)
         return parsed
 
-    def _normalize_common_leef_fields(self, d: Dict[str, Any]):
+    def _normalize_common_leef_fields(self, d: dict[str, Any]):
         """Map standard LEEF keys to intermediate fields."""
         if "src" in d:
             d["src_ip"] = d["src"]

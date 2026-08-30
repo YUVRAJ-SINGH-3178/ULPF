@@ -4,7 +4,7 @@ Parses PAN-OS Traffic, Threat, and System logs in CEF and CSV formats.
 """
 
 import re
-from typing import Dict, Any, Optional
+from typing import Any
 
 from ulpf.packages.schemas.models import FormatType, SourceMetadata
 from ulpf.services.parser_engine.base import BaseParser
@@ -34,11 +34,11 @@ class PaloAltoParser(BaseParser):
         )
         self._cef_parser = CEFParser()
 
-    def matches(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> bool:
+    def matches(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> bool:
         lower = raw_payload.lower()
         return ("palo alto" in lower or "pan-os" in lower or "panos" in lower or "1,202" in raw_payload or (source_meta and source_meta.vendor.lower() == "palo alto"))
 
-    def parse_fields(self, raw_payload: str, source_meta: Optional[SourceMetadata] = None) -> Dict[str, Any]:
+    def parse_fields(self, raw_payload: str, source_meta: SourceMetadata | None = None) -> dict[str, Any]:
         raw = raw_payload.strip()
 
         # If CEF formatted

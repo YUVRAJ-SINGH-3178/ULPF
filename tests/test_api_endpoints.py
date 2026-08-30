@@ -2,8 +2,8 @@
 Integration Tests: REST API Endpoints
 """
 
-import pytest
 from fastapi.testclient import TestClient
+
 from ulpf.apps.api.main import app
 
 client = TestClient(app)

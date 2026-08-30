@@ -4,9 +4,10 @@ Tests Golden Fixtures for Cisco ASA, Palo Alto, Fortinet, Checkpoint, Suricata, 
 """
 
 import pytest
-from ulpf.packages.schemas.models import SourceMetadata, FormatType
-from ulpf.services.parser_engine.registry import ParserRegistry
+
+from ulpf.packages.schemas.models import FormatType, SourceMetadata
 from ulpf.services.normalization.ocsf_mapper import OCSFNormalizer
+from ulpf.services.parser_engine.registry import ParserRegistry
 
 
 @pytest.fixture

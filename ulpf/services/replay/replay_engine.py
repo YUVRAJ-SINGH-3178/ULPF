@@ -3,12 +3,12 @@ Error & Replay Subsystem
 Maintains dead-letter error queue for unparseable logs and executes replay workflows.
 """
 
+import datetime
 import json
 import threading
 import uuid
-import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Callable
+from typing import Any
 
 from ulpf.packages.schemas.models import EventEnvelope
 
@@ -23,7 +23,7 @@ class ErrorAndReplayQueue:
         self.persistence_dir = Path(persistence_dir)
         self.persistence_dir.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
-        self._queue: Dict[str, Dict[str, Any]] = {}
+        self._queue: dict[str, dict[str, Any]] = {}
         self._load_persisted_errors()
 
     def _load_persisted_errors(self):
@@ -43,7 +43,7 @@ class ErrorAndReplayQueue:
         self,
         envelope: EventEnvelope,
         error_stage: str,
-        errors: List[str]
+        errors: list[str]
     ) -> str:
         """Records an event processing failure."""
         error_id = str(uuid.uuid4())
@@ -67,13 +67,13 @@ class ErrorAndReplayQueue:
 
         return error_id
 
-    def list_errors(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
+    def list_errors(self, status: str | None = None) -> list[dict[str, Any]]:
         with self._lock:
             if status:
                 return [r for r in self._queue.values() if r["status"] == status]
             return list(self._queue.values())
 
-    def get_error(self, error_id: str) -> Optional[Dict[str, Any]]:
+    def get_error(self, error_id: str) -> dict[str, Any] | None:
         with self._lock:
             return self._queue.get(error_id)
 

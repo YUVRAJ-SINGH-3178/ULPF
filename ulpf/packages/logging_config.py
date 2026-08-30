@@ -3,11 +3,11 @@ Structured JSON & Console Logging Subsystem
 Standardizes machine-readable logging for SOC SIEM ingestion and operational auditing.
 """
 
+import datetime
 import json
 import logging
 import sys
-import datetime
-from typing import Optional, Dict, Any
+from typing import Any
 
 from ulpf.packages.config.settings import get_settings
 
@@ -18,7 +18,7 @@ class JSONFormatter(logging.Formatter):
     """
 
     def format(self, record: logging.LogRecord) -> str:
-        log_obj: Dict[str, Any] = {
+        log_obj: dict[str, Any] = {
             "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
@@ -46,7 +46,7 @@ class JSONFormatter(logging.Formatter):
         return json.dumps(log_obj)
 
 
-def configure_logging(level: Optional[str] = None, log_format: Optional[str] = None):
+def configure_logging(level: str | None = None, log_format: str | None = None):
     """Configures global logging system based on settings."""
     settings = get_settings()
     log_lvl_str = level or settings.ULPF_LOG_LEVEL

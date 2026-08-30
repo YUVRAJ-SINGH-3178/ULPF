@@ -3,13 +3,10 @@ Multi-protocol Ingestion Listeners (UDP Syslog, TCP Syslog, File Watcher)
 Accepts telemetry from perimeter network devices completely offline.
 """
 
-import asyncio
-import os
 import socket
 import threading
-import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional, List
 
 from ulpf.packages.schemas.models import EventEnvelope
 from ulpf.services.ingestion.raw_envelope import EnvelopeFactory
@@ -25,16 +22,16 @@ class UDPSyslogListener:
         self,
         host: str = "0.0.0.0",
         port: int = 5140,
-        envelope_factory: Optional[EnvelopeFactory] = None,
-        callback: Optional[Callable[[EventEnvelope], None]] = None
+        envelope_factory: EnvelopeFactory | None = None,
+        callback: Callable[[EventEnvelope], None] | None = None
     ):
         self.host = host
         self.port = port
         self.factory = envelope_factory or EnvelopeFactory()
         self.callback = callback
         self.running = False
-        self._thread: Optional[threading.Thread] = None
-        self._sock: Optional[socket.socket] = None
+        self._thread: threading.Thread | None = None
+        self._sock: socket.socket | None = None
 
     def start(self):
         if self.running:
@@ -49,7 +46,7 @@ class UDPSyslogListener:
             self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self._sock.bind((self.host, self.port))
             self._sock.settimeout(1.0)
-        except Exception as e:
+        except Exception:
             self.running = False
             return
 
@@ -67,7 +64,7 @@ class UDPSyslogListener:
                     )
                     if self.callback:
                         self.callback(envelope)
-            except socket.timeout:
+            except TimeoutError:
                 continue
             except Exception:
                 if not self.running:
@@ -94,16 +91,16 @@ class TCPSyslogListener:
         self,
         host: str = "0.0.0.0",
         port: int = 1514,
-        envelope_factory: Optional[EnvelopeFactory] = None,
-        callback: Optional[Callable[[EventEnvelope], None]] = None
+        envelope_factory: EnvelopeFactory | None = None,
+        callback: Callable[[EventEnvelope], None] | None = None
     ):
         self.host = host
         self.port = port
         self.factory = envelope_factory or EnvelopeFactory()
         self.callback = callback
         self.running = False
-        self._thread: Optional[threading.Thread] = None
-        self._server_sock: Optional[socket.socket] = None
+        self._thread: threading.Thread | None = None
+        self._server_sock: socket.socket | None = None
 
     def start(self):
         if self.running:
@@ -128,7 +125,7 @@ class TCPSyslogListener:
                 client_sock, addr = self._server_sock.accept()
                 t = threading.Thread(target=self._handle_client, args=(client_sock, addr), daemon=True)
                 t.start()
-            except socket.timeout:
+            except TimeoutError:
                 continue
             except Exception:
                 if not self.running:
@@ -177,8 +174,8 @@ class FileBatchIngestor:
 
     def __init__(
         self,
-        envelope_factory: Optional[EnvelopeFactory] = None,
-        callback: Optional[Callable[[EventEnvelope], None]] = None
+        envelope_factory: EnvelopeFactory | None = None,
+        callback: Callable[[EventEnvelope], None] | None = None
     ):
         self.factory = envelope_factory or EnvelopeFactory()
         self.callback = callback
@@ -186,9 +183,9 @@ class FileBatchIngestor:
     def ingest_file(
         self,
         filepath: str,
-        vendor_hint: Optional[str] = None,
-        product_hint: Optional[str] = None
-    ) -> List[EventEnvelope]:
+        vendor_hint: str | None = None,
+        product_hint: str | None = None
+    ) -> list[EventEnvelope]:
         """
         Reads a log file line-by-line, generates envelopes, and passes to callback.
         """

@@ -3,12 +3,13 @@ Data Lake Storage Writer (Apache Parquet & DuckDB)
 Provides high-performance columnar storage partitioned for AI/ML and SIEM analytics.
 """
 
+import datetime
 import os
 import threading
 import uuid
 from pathlib import Path
-from typing import List, Dict, Any
-import datetime
+from typing import Any
+
 import pyarrow as pa
 import pyarrow.parquet as pq
 
@@ -26,7 +27,7 @@ class ParquetDataLakeWriter:
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
 
-    def write_batch(self, envelopes: List[EventEnvelope]) -> str:
+    def write_batch(self, envelopes: list[EventEnvelope]) -> str:
         """
         Flushes a batch of normalized envelopes into a timestamped Parquet file.
         """
@@ -84,7 +85,7 @@ class ParquetDataLakeWriter:
 
         return str(final_filename.resolve())
 
-    def list_parquet_files(self) -> List[Dict[str, Any]]:
+    def list_parquet_files(self) -> list[dict[str, Any]]:
         """Returns list of parquet files in the data lake with sizes and timestamps."""
         files = []
         for p in self.base_dir.glob("**/*.parquet"):
