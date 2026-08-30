@@ -53,15 +53,19 @@ def test_minio_raw_preservation_failure_fails_fast(tmp_path):
     refuse to mark the event as safely stored or normalized, and record to DLQ.
     """
     mock_raw_store = MagicMock()
-    mock_raw_store.store_raw.side_effect = ConnectionError("MinIO raw store unreachable (503 Service Unavailable)")
+    mock_raw_store.store_raw.side_effect = ConnectionError(
+        "MinIO raw store unreachable (503 Service Unavailable)"
+    )
 
     orch = PipelineOrchestrator(
         base_dir=str(tmp_path),
         raw_store=mock_raw_store,
-        search_store=SQLiteSearchStore(f"{tmp_path}/search.db")
+        search_store=SQLiteSearchStore(f"{tmp_path}/search.db"),
     )
 
-    sample_log = "<166>Aug 27 10:15:30 fw-edge-01 %ASA-6-302013: Built inbound TCP connection"
+    sample_log = (
+        "<166>Aug 27 10:15:30 fw-edge-01 %ASA-6-302013: Built inbound TCP connection"
+    )
     env = orch.process_raw_log(sample_log)
 
     assert env.traceability["processing_status"] == "RAW_STORE_FAILED"
@@ -82,13 +86,15 @@ def test_opensearch_outage_and_idempotent_recovery(tmp_path):
     """
     real_search_store = SQLiteSearchStore(f"{tmp_path}/search.db")
     failing_search_store = MagicMock()
-    failing_search_store.index_event.side_effect = TimeoutError("OpenSearch cluster timeout (HTTP 504)")
+    failing_search_store.index_event.side_effect = TimeoutError(
+        "OpenSearch cluster timeout (HTTP 504)"
+    )
 
     real_raw_store = LocalRawStore(f"{tmp_path}/raw_store")
     orch = PipelineOrchestrator(
         base_dir=str(tmp_path),
         raw_store=real_raw_store,
-        search_store=failing_search_store
+        search_store=failing_search_store,
     )
 
     sample_log = "CEF:0|Palo Alto Networks|PAN-OS|10.1.0|TRAFFIC|allow|1|src=10.0.0.1 dst=10.0.0.2"

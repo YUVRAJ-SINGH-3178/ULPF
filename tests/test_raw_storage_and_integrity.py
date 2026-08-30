@@ -77,7 +77,9 @@ def test_missing_event_integrity_verification(temp_raw_store):
 
 def test_truncated_payload_integrity_verification(temp_raw_store):
     """Verifies that truncation of raw bytes is detected as a cryptographic violation."""
-    raw_payload = "CEF:0|Fortinet|FortiOS|7.0.0|101|Traffic Accepted|5|src=10.1.1.1 dst=10.2.2.2"
+    raw_payload = (
+        "CEF:0|Fortinet|FortiOS|7.0.0|101|Traffic Accepted|5|src=10.1.1.1 dst=10.2.2.2"
+    )
     event_id = "test-trunc-001"
     ref = temp_raw_store.store_raw(raw_payload=raw_payload, event_id=event_id)
 

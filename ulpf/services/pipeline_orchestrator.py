@@ -147,16 +147,33 @@ class PipelineOrchestrator:
             with self._metrics_lock:
                 self.total_errors += 1
             # Create minimal failure envelope for DLQ tracking
-            dummy_source = SourceMetadata(vendor=vendor_hint or "unknown", product=product_hint or "unknown", transport=transport, client_ip=client_ip)
-            dummy_raw = RawStorageRef(bucket="unknown", object_key="none", sha256="", byte_length=len(raw_payload.encode("utf-8")), raw_payload=raw_payload)
+            dummy_source = SourceMetadata(
+                vendor=vendor_hint or "unknown",
+                product=product_hint or "unknown",
+                transport=transport,
+                client_ip=client_ip,
+            )
+            dummy_raw = RawStorageRef(
+                bucket="unknown",
+                object_key="none",
+                sha256="",
+                byte_length=len(raw_payload.encode("utf-8")),
+                raw_payload=raw_payload,
+            )
             fail_env = EventEnvelope(
                 event_id=str(uuid.uuid4()),
                 source=dummy_source,
                 raw=dummy_raw,
                 parsing=ParsingMetadata(errors=[f"Raw Storage Failure: {e}"]),
-                traceability={"trace_id": req_trace_id, "processing_status": "RAW_STORE_FAILED", "error": str(e)}
+                traceability={
+                    "trace_id": req_trace_id,
+                    "processing_status": "RAW_STORE_FAILED",
+                    "error": str(e),
+                },
             )
-            self.error_queue.record_failure(fail_env, "RAW_STORE", [f"Raw storage failed: {e}"])
+            self.error_queue.record_failure(
+                fail_env, "RAW_STORE", [f"Raw storage failed: {e}"]
+            )
             return fail_env
 
         with self._metrics_lock:

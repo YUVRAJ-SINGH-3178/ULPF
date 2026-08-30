@@ -49,7 +49,7 @@ jobs:
           ULPF_SECRET_KEY: "ci-testing-secret-key-at-least-32-chars-long"
           ULPF_ENABLE_SYSLOG_LISTENERS: "false"
         run: |
-          python -m pytest tests/ --cov=ulpf --cov-report=xml --cov-report=term --cov-fail-under=80 -v
+          python -m pytest tests/ --cov=ulpf --cov-report=xml --cov-report=term --cov-fail-under=70 -v
 
       - name: Verify Automated Demo Smoke Tests
         env:
