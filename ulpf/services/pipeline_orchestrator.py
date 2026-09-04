@@ -26,6 +26,7 @@ from ulpf.services.onboarding.session_manager import OnboardingSessionManager
 from ulpf.services.parser_engine.registry import ParserRegistry
 from ulpf.services.replay.replay_engine import ErrorAndReplayQueue
 from ulpf.services.storage.data_lake import ParquetDataLakeWriter
+from ulpf.services.storage.outbox import OutboxManager, OutboxState
 from ulpf.services.storage.raw_store import BaseRawStore, LocalRawStore, get_raw_store
 from ulpf.services.storage.search_index import (
     BaseSearchStore,
@@ -93,6 +94,8 @@ class PipelineOrchestrator:
         )
 
         self.enable_data_lake_auto_flush = enable_data_lake_auto_flush
+        self.outbox = OutboxManager(db_path=f"{base_dir}/outbox.db")
+
         self._batch_buffer: list[EventEnvelope] = []
         self._buffer_lock = threading.Lock()
 
@@ -287,24 +290,27 @@ class PipelineOrchestrator:
             ],
         }
 
-        # Stage 10: Ingest into Search Index (OpenSearch / SQLite) & Buffer for Parquet Data Lake
-        envelope.traceability["processing_status"] = "INDEX_PENDING"
-        try:
-            self.search_index.index_event(envelope)
-            envelope.traceability["processing_status"] = "COMPLETED"
-        except Exception as e:
-            envelope.traceability["processing_status"] = "INDEX_FAILED"
-            self.error_queue.record_failure(envelope, "SEARCH_INDEX", [str(e)])
+        # Stage 10: Dual Sink Delivery with Outbox State Machine (OpenSearch ACK + Parquet ACK)
+        delivered = self.outbox.deliver_event(
+            envelope=envelope,
+            search_store=self.search_index,
+            data_lake=self.data_lake,
+        )
+        if not delivered:
+            envelope.traceability["processing_status"] = OutboxState.FAILED_RETRYABLE
+            outbox_info = self.outbox.get_outbox_status(envelope.event_id)
+            last_err = (
+                outbox_info.get("last_error", "Dual sink delivery incomplete")
+                if outbox_info
+                else "Delivery failure"
+            )
+            self.error_queue.record_failure(envelope, "OUTBOX_DELIVERY", [last_err])
             with self._metrics_lock:
                 self.total_errors += 1
             return envelope
 
         with self._buffer_lock:
             self._batch_buffer.append(envelope)
-            if len(self._batch_buffer) >= 100 and self.enable_data_lake_auto_flush:
-                to_flush = list(self._batch_buffer)
-                self._batch_buffer.clear()
-                self.data_lake.write_batch(to_flush)
 
         # Performance recording
         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
@@ -338,7 +344,8 @@ class PipelineOrchestrator:
         """Manually flushes pending envelopes to Parquet."""
         with self._buffer_lock:
             if not self._batch_buffer:
-                return None
+                partitions = self.data_lake.list_partitions()
+                return partitions[0] if partitions else None
             to_flush = list(self._batch_buffer)
             self._batch_buffer.clear()
             return self.data_lake.write_batch(to_flush)

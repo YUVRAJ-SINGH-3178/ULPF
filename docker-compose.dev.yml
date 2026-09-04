@@ -1,0 +1,104 @@
+version: '3.8'
+
+# ==============================================================================
+# ULPF — Universal Log Pre-processing Framework (SIH26156 / NTRO)
+# Local Development & Evaluation Compose Configuration
+#
+# NOTE: This file is strictly for local dev/demo testing with host-exposed ports
+# and demo credentials. For production air-gapped deployments, use docker-compose.prod.yml.
+# ==============================================================================
+
+services:
+  minio:
+    image: minio/minio:RELEASE.2024-08-03T04-33-23Z
+    container_name: ulpf-minio-dev
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin123
+    ports:
+      - "9000:9000"      # S3 API for local debugging
+      - "9001:9001"      # Web Console
+    volumes:
+      - ulpf_minio_dev_data:/data
+    networks:
+      - ulpf-dev-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  opensearch:
+    image: opensearchproject/opensearch:2.14.0
+    container_name: ulpf-opensearch-dev
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - plugins.security.disabled=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "9200:9200"      # REST Search API
+      - "9600:9600"      # Performance Analyzer
+    volumes:
+      - ulpf_opensearch_dev_data:/usr/share/opensearch/data
+    networks:
+      - ulpf-dev-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  ulpf-api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: ulpf-api-dev
+    restart: unless-stopped
+    depends_on:
+      minio:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+      - "5140:5140/udp"
+      - "1514:1514"
+    volumes:
+      - ulpf_app_dev_data:/app/data
+    environment:
+      - ULPF_ENV=development
+      - ULPF_DEMO_MODE=true
+      - ULPF_STORAGE_BACKEND=minio
+      - ULPF_MINIO_ENDPOINT=minio:9000
+      - ULPF_MINIO_ACCESS_KEY=minioadmin
+      - ULPF_MINIO_SECRET_KEY=minioadmin123
+      - ULPF_MINIO_RAW_BUCKET=ulpf-raw
+      - ULPF_SEARCH_BACKEND=opensearch
+      - ULPF_OPENSEARCH_URL=http://opensearch:9200
+      - ULPF_OPENSEARCH_INDEX_PREFIX=ulpf-events-v1
+      - PYTHONUNBUFFERED=1
+    networks:
+      - ulpf-dev-net
+
+volumes:
+  ulpf_minio_dev_data:
+    driver: local
+  ulpf_opensearch_dev_data:
+    driver: local
+  ulpf_app_dev_data:
+    driver: local
+
+networks:
+  ulpf-dev-net:
+    driver: bridge

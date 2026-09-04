@@ -100,8 +100,8 @@ def test_opensearch_outage_and_idempotent_recovery(tmp_path):
     sample_log = "CEF:0|Palo Alto Networks|PAN-OS|10.1.0|TRAFFIC|allow|1|src=10.0.0.1 dst=10.0.0.2"
     env = orch.process_raw_log(sample_log)
 
-    # 1. Verify status is INDEX_FAILED
-    assert env.traceability["processing_status"] == "INDEX_FAILED"
+    # 1. Verify status is FAILED_RETRYABLE in Outbox state machine
+    assert env.traceability["processing_status"] in ("FAILED_RETRYABLE", "INDEX_FAILED")
 
     # 2. Verify raw event IS safely preserved
     raw_payload, ref = real_raw_store.retrieve_raw(env.event_id)
@@ -110,7 +110,7 @@ def test_opensearch_outage_and_idempotent_recovery(tmp_path):
     # 3. Verify failure is in DLQ
     errors = orch.error_queue.list_errors()
     assert len(errors) >= 1
-    assert any(e["error_stage"] == "SEARCH_INDEX" for e in errors)
+    assert any(e["error_stage"] in ("OUTBOX_DELIVERY", "SEARCH_INDEX") for e in errors)
 
     # 4. OpenSearch recovers: re-index event with real store
     real_search_store.index_event(env)

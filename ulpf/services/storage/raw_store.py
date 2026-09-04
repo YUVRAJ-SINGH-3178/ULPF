@@ -321,7 +321,8 @@ class MinIORawStore(BaseRawStore):
         now = datetime.datetime.now(datetime.timezone.utc)
         source_id = (source_meta or {}).get("vendor", "perimeter")
         object_key = self._build_object_key(event_id, source_id=source_id, now=now)
-        meta_key = object_key.replace(".raw", ".meta.json")
+        # Deterministic direct object key for metadata locator
+        meta_key = f"metadata/events/{event_id}.meta.json"
 
         meta_data = {
             "event_id": event_id,
@@ -348,7 +349,7 @@ class MinIORawStore(BaseRawStore):
             },
         )
 
-        # 2. Put companion metadata into MinIO
+        # 2. Put companion metadata into MinIO at direct deterministic key
         meta_bytes = json.dumps(meta_data).encode("utf-8")
         meta_stream = io.BytesIO(meta_bytes)
         self.client.put_object(
@@ -395,25 +396,54 @@ class MinIORawStore(BaseRawStore):
         except Exception:
             return None
 
+    def retrieve_by_storage_uri(
+        self, raw_storage_uri: str
+    ) -> tuple[str, RawStorageRef] | None:
+        """
+        Deterministic direct object retrieval using raw_storage_uri ('bucket/object_key')
+        without bucket-wide scanning or metadata resolution.
+        """
+        if "/" not in raw_storage_uri:
+            return None
+        bucket, object_key = raw_storage_uri.split("/", 1)
+        try:
+            response = self.client.get_object(bucket, object_key)
+            raw_bytes = response.read()
+            response.close()
+            response.release_conn()
+
+            raw_payload = raw_bytes.decode("utf-8", errors="replace")
+            sha256_hash = hashlib.sha256(raw_bytes).hexdigest()
+            ref = RawStorageRef(
+                bucket=bucket,
+                object_key=object_key,
+                sha256=sha256_hash,
+                byte_length=len(raw_bytes),
+                raw_payload=raw_payload,
+                compression="none",
+            )
+            return raw_payload, ref
+        except Exception:
+            return None
+
     def _get_metadata(self, event_id: str) -> dict[str, Any] | None:
         with self._lock:
             if event_id in self._meta_index:
                 return self._meta_index[event_id]
 
-        # Scan for metadata object
+        # Deterministic direct object lookup without bucket-wide scanning
+        meta_key = f"metadata/events/{event_id}.meta.json"
         try:
-            objects = self.client.list_objects(self.bucket, recursive=True)
-            for obj in objects:
-                if obj.object_name.endswith(f"{event_id}.meta.json"):
-                    res = self.client.get_object(self.bucket, obj.object_name)
-                    data = json.loads(res.read().decode("utf-8"))
-                    res.close()
-                    res.release_conn()
-                    with self._lock:
-                        self._meta_index[event_id] = data
-                    return data
+            res = self.client.get_object(self.bucket, meta_key)
+            data = json.loads(res.read().decode("utf-8"))
+            res.close()
+            res.release_conn()
+            with self._lock:
+                self._meta_index[event_id] = data
+            return data
         except Exception:
             pass
+
         return None
 
     def verify_integrity(self, event_id: str) -> VerificationResult:

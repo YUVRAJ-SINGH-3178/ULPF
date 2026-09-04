@@ -422,7 +422,15 @@ class SQLiteSearchStore(BaseSearchStore):
                 pass
         if d.get("envelope_json"):
             try:
-                d["envelope"] = json.loads(d["envelope_json"])
+                env_data = json.loads(d["envelope_json"])
+                d["envelope"] = env_data
+                if "raw" in env_data:
+                    raw_info = env_data["raw"]
+                    d["raw_storage_uri"] = (
+                        f"{raw_info.get('bucket')}/{raw_info.get('object_key')}"
+                    )
+                if "traceability" in env_data:
+                    d["trace_id"] = env_data["traceability"].get("trace_id")
             except Exception:
                 pass
         return d
@@ -735,10 +743,13 @@ class OpenSearchStore(BaseSearchStore):
                         "protocol_name": {"type": "keyword"},
                         "app_name": {"type": "keyword"},
                         "raw_sha256": {"type": "keyword"},
+                        "sha256_hash": {"type": "keyword"},
                         "raw_storage_uri": {"type": "keyword"},
+                        "trace_id": {"type": "keyword"},
                         "byte_length": {"type": "integer"},
                         "parser_used": {"type": "keyword"},
                         "parser_version": {"type": "keyword"},
+                        "ocsf_schema_version": {"type": "keyword"},
                         "template_id": {"type": "integer"},
                         "confidence": {"type": "float"},
                         "ocsf": {"type": "object", "dynamic": True},
@@ -775,12 +786,18 @@ class OpenSearchStore(BaseSearchStore):
             datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000
         )
         time_dt = ocsf.get("time_dt") or envelope.ingest_timestamp
+        trace_id = (
+            envelope.traceability.get("trace_id")
+            if envelope.traceability
+            else envelope.event_id
+        ) or envelope.event_id
 
         doc = {
             "event_id": envelope.event_id,
             "ingest_timestamp": envelope.ingest_timestamp,
             "time_dt": time_dt,
             "time_epoch": time_epoch,
+            "trace_id": trace_id,
             "vendor": envelope.source.vendor,
             "product": envelope.source.product,
             "detected_format": str(
@@ -803,13 +820,14 @@ class OpenSearchStore(BaseSearchStore):
             "protocol_name": conn_info.get("protocol_name", "TCP"),
             "app_name": ocsf.get("app_name"),
             "raw_sha256": envelope.raw.sha256,
+            "sha256_hash": envelope.raw.sha256,
             "raw_storage_uri": f"{envelope.raw.bucket}/{envelope.raw.object_key}",
             "byte_length": envelope.raw.byte_length,
             "parser_used": envelope.parsing.parser_used,
             "parser_version": envelope.parsing.parser_version,
+            "ocsf_schema_version": "1.1.0",
             "template_id": envelope.parsing.template_id,
             "confidence": envelope.parsing.confidence,
-            "raw_payload": envelope.raw.raw_payload,
             "ocsf": ocsf,
         }
         if src.get("ip"):

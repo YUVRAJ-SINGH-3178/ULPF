@@ -2,7 +2,12 @@ version: '3.8'
 
 # ==============================================================================
 # ULPF — Universal Log Pre-processing Framework (SIH26156 / NTRO)
-# Production Air-Gapped Stack (MinIO + OpenSearch + API + Workers)
+# Production Air-Gapped Stack (MinIO + OpenSearch + API Gateway + Worker Pool)
+#
+# SECURITY REQUIREMENTS:
+# - No hardcoded secrets: inject credentials via .env file or orchestrator secrets.
+# - Network isolation: internal: true enforces complete air-gapped network perimeter.
+# - Least Privilege: MinIO and OpenSearch do not expose management ports to host.
 # ==============================================================================
 
 services:
@@ -10,13 +15,12 @@ services:
     image: minio/minio:RELEASE.2024-08-03T04-33-23Z
     container_name: ulpf-minio-raw-store
     restart: unless-stopped
-    command: server /data --console-address ":9001"
+    command: server /data
     environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin123
-    ports:
-      - "9000:9000"      # S3 API
-      - "9001:9001"      # Web Console
+      - MINIO_ROOT_USER=${ULPF_MINIO_ACCESS_KEY:?Error: ULPF_MINIO_ACCESS_KEY is required}
+      - MINIO_ROOT_PASSWORD=${ULPF_MINIO_SECRET_KEY:?Error: ULPF_MINIO_SECRET_KEY is required}
+    expose:
+      - "9000"
     volumes:
       - ulpf_minio_data:/data
     networks:
@@ -33,7 +37,9 @@ services:
     restart: unless-stopped
     environment:
       - discovery.type=single-node
-      - plugins.security.disabled=true
+      - plugins.security.disabled=false
+      - plugins.security.ssl.http.enabled=false
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${ULPF_OPENSEARCH_PASSWORD:?Error: ULPF_OPENSEARCH_PASSWORD is required}
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
       - bootstrap.memory_lock=true
     ulimits:
@@ -43,15 +49,14 @@ services:
       nofile:
         soft: 65536
         hard: 65536
-    ports:
-      - "9200:9200"      # REST Search API
-      - "9600:9600"      # Performance Analyzer
+    expose:
+      - "9200"
     volumes:
       - ulpf_opensearch_data:/usr/share/opensearch/data
     networks:
       - ulpf-airgap-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      test: ["CMD", "curl", "-f", "-u", "${ULPF_OPENSEARCH_USERNAME:-admin}:${ULPF_OPENSEARCH_PASSWORD}", "http://localhost:9200/_cluster/health"]
       interval: 20s
       timeout: 5s
       retries: 5
@@ -68,7 +73,7 @@ services:
       opensearch:
         condition: service_healthy
     ports:
-      - "8000:8000"      # Dashboard UI & REST API
+      - "8000:8000"      # Web Dashboard UI & REST API Gateway
       - "5140:5140/udp"  # UDP Syslog Ingestion
       - "1514:1514"      # TCP Syslog Ingestion
     volumes:
@@ -76,16 +81,19 @@ services:
     environment:
       - ULPF_ENV=production
       - ULPF_DEMO_MODE=false
-      - ULPF_AIR_GAPPED=1
-      - ULPF_SECRET_KEY=ulpf-ntro-sih2026-production-airgap-secret-key-32bytes
+      - ULPF_AIR_GAPPED=true
+      - ULPF_SECRET_KEY=${ULPF_SECRET_KEY:?Error: ULPF_SECRET_KEY is required}
       - ULPF_STORAGE_BACKEND=minio
       - ULPF_MINIO_ENDPOINT=minio:9000
-      - ULPF_MINIO_ACCESS_KEY=minioadmin
-      - ULPF_MINIO_SECRET_KEY=minioadmin123
-      - ULPF_MINIO_RAW_BUCKET=ulpf-raw
+      - ULPF_MINIO_ACCESS_KEY=${ULPF_MINIO_ACCESS_KEY}
+      - ULPF_MINIO_SECRET_KEY=${ULPF_MINIO_SECRET_KEY}
+      - ULPF_MINIO_RAW_BUCKET=${ULPF_MINIO_RAW_BUCKET:-ulpf-raw}
       - ULPF_SEARCH_BACKEND=opensearch
       - ULPF_OPENSEARCH_URL=http://opensearch:9200
-      - ULPF_OPENSEARCH_INDEX_PREFIX=ulpf-events-v1
+      - ULPF_OPENSEARCH_USERNAME=${ULPF_OPENSEARCH_USERNAME:-admin}
+      - ULPF_OPENSEARCH_PASSWORD=${ULPF_OPENSEARCH_PASSWORD}
+      - ULPF_OPENSEARCH_INDEX_PREFIX=${ULPF_OPENSEARCH_INDEX_PREFIX:-ulpf-events-v1}
+      - ULPF_QUEUE_BACKEND=sqlite_queue
       - PYTHONUNBUFFERED=1
     networks:
       - ulpf-airgap-net
@@ -112,16 +120,20 @@ services:
     environment:
       - ULPF_ENV=production
       - ULPF_DEMO_MODE=false
-      - ULPF_AIR_GAPPED=1
-      - ULPF_SECRET_KEY=ulpf-ntro-sih2026-production-airgap-secret-key-32bytes
+      - ULPF_AIR_GAPPED=true
+      - ULPF_SECRET_KEY=${ULPF_SECRET_KEY}
       - ULPF_STORAGE_BACKEND=minio
       - ULPF_MINIO_ENDPOINT=minio:9000
-      - ULPF_MINIO_ACCESS_KEY=minioadmin
-      - ULPF_MINIO_SECRET_KEY=minioadmin123
-      - ULPF_MINIO_RAW_BUCKET=ulpf-raw
+      - ULPF_MINIO_ACCESS_KEY=${ULPF_MINIO_ACCESS_KEY}
+      - ULPF_MINIO_SECRET_KEY=${ULPF_MINIO_SECRET_KEY}
+      - ULPF_MINIO_RAW_BUCKET=${ULPF_MINIO_RAW_BUCKET:-ulpf-raw}
       - ULPF_SEARCH_BACKEND=opensearch
       - ULPF_OPENSEARCH_URL=http://opensearch:9200
-      - ULPF_WORKER_CONCURRENCY=4
+      - ULPF_OPENSEARCH_USERNAME=${ULPF_OPENSEARCH_USERNAME:-admin}
+      - ULPF_OPENSEARCH_PASSWORD=${ULPF_OPENSEARCH_PASSWORD}
+      - ULPF_OPENSEARCH_INDEX_PREFIX=${ULPF_OPENSEARCH_INDEX_PREFIX:-ulpf-events-v1}
+      - ULPF_QUEUE_BACKEND=sqlite_queue
+      - ULPF_WORKER_CONCURRENCY=${ULPF_WORKER_CONCURRENCY:-4}
       - PYTHONUNBUFFERED=1
     networks:
       - ulpf-airgap-net
@@ -137,4 +149,4 @@ volumes:
 networks:
   ulpf-airgap-net:
     driver: bridge
-    internal: false
+    internal: true

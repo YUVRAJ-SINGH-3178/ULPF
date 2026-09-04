@@ -9,11 +9,14 @@ import signal
 import sys
 import threading
 import time
+from pathlib import Path
 from typing import Any
 
 from ulpf.packages.config.settings import get_settings
 from ulpf.services.pipeline_orchestrator import PipelineOrchestrator
 from ulpf.services.processing.event_queue import DurableEventQueue
+from ulpf.services.storage.raw_store import get_raw_store
+from ulpf.services.storage.search_index import get_search_store
 
 logger = logging.getLogger("ulpf.worker")
 
@@ -21,6 +24,7 @@ logger = logging.getLogger("ulpf.worker")
 class ProcessingWorkerPool:
     """
     Worker pool consuming from a DurableEventQueue and processing telemetry through PipelineOrchestrator.
+    Features lease timeout monitoring, SQLite WAL compatibility, and automated crash recovery.
     """
 
     def __init__(
@@ -34,6 +38,7 @@ class ProcessingWorkerPool:
         self.concurrency = concurrency
         self.running = False
         self.threads: list[threading.Thread] = []
+        self.reclaimer_thread: threading.Thread | None = None
         self.processed_count = 0
         self.failed_count = 0
         self._lock = threading.Lock()
@@ -48,7 +53,14 @@ class ProcessingWorkerPool:
             )
             self.threads.append(t)
             t.start()
-        logger.info(f"Started {self.concurrency} ULPF processing workers")
+
+        self.reclaimer_thread = threading.Thread(
+            target=self._reclaimer_loop, name="ulpf-lease-reclaimer", daemon=True
+        )
+        self.reclaimer_thread.start()
+        logger.info(
+            f"Started {self.concurrency} ULPF processing workers and lease reclaimer"
+        )
 
     def _worker_loop(self):
         while self.running:
@@ -71,7 +83,25 @@ class ProcessingWorkerPool:
                 logger.error(f"Worker failed processing item {item.item_id}: {e}")
                 with self._lock:
                     self.failed_count += 1
-                self.queue.task_done(item.item_id)
+                self.queue.record_retry(item.item_id, str(e))
+                if item.attempts >= item.max_attempts:
+                    self.queue.task_done(item.item_id)
+
+    def _reclaimer_loop(self):
+        """Periodically scans for expired worker leases from crashes or stalls."""
+        while self.running:
+            try:
+                reclaimed = self.queue.reclaim_expired_leases()
+                if reclaimed > 0:
+                    logger.info(
+                        f"Reclaimed {reclaimed} expired leases from halted workers"
+                    )
+            except Exception as e:
+                logger.error(f"Error reclaiming expired leases: {e}")
+            for _ in range(10):
+                if not self.running:
+                    break
+                time.sleep(1.0)
 
     def stop(self):
         self.running = False
@@ -79,6 +109,8 @@ class ProcessingWorkerPool:
             if t.is_alive():
                 t.join(timeout=2.0)
         self.threads.clear()
+        if self.reclaimer_thread and self.reclaimer_thread.is_alive():
+            self.reclaimer_thread.join(timeout=2.0)
         logger.info("Stopped ULPF processing workers")
 
     def get_stats(self) -> dict[str, Any]:
@@ -97,10 +129,26 @@ def main():
         level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
     )
     settings = get_settings()
-    logger.info("Starting standalone ULPF processing worker daemon...")
+    logger.info(
+        "Starting standalone ULPF processing worker daemon with unified factory..."
+    )
 
-    orchestrator = PipelineOrchestrator(base_dir=settings.ULPF_BASE_DATA_DIR)
-    q = DurableEventQueue(maxsize=settings.ULPF_MAX_INGEST_QUEUE_SIZE)
+    base_dir = Path(settings.ULPF_BASE_DATA_DIR)
+    base_dir.mkdir(parents=True, exist_ok=True)
+    db_path = str(base_dir / "durable_queue.db")
+
+    raw_store = get_raw_store(settings)
+    search_store = get_search_store(settings)
+    orchestrator = PipelineOrchestrator(
+        base_dir=settings.ULPF_BASE_DATA_DIR,
+        raw_store=raw_store,
+        search_index=search_store,
+    )
+    q = DurableEventQueue(
+        maxsize=settings.ULPF_MAX_INGEST_QUEUE_SIZE,
+        db_path=db_path,
+        visibility_timeout_sec=30.0,
+    )
     pool = ProcessingWorkerPool(
         q, orchestrator, concurrency=settings.ULPF_WORKER_CONCURRENCY
     )

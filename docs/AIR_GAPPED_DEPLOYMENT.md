@@ -1,55 +1,57 @@
 # ULPF Air-Gapped Deployment Guide
 **Zero-Network Operational Certification for High-Security / Defense Environments**
 
+**Organization**: National Technical Research Organisation (NTRO) · SIH26156  
+**Verification Status**: **EXECUTED & VERIFIED** (Automated validation via `tests/test_airgap.py`)
+
 ---
 
 ## 1. Air-Gapped Architectural Guarantees
 
-ULPF is engineered to operate in **100% isolated, physically air-gapped secure facilities** (e.g. SCIFs, military operations centers, isolated sovereign networks).
+ULPF is engineered to operate in **100% isolated, physically air-gapped secure facilities** (e.g., SCIFs, defense operations centers, sovereign strategic enclaves).
 
 ### Absolute Air-Gap Rules Enforced:
-1. **Zero Outbound Sockets**: No external DNS queries, cloud API calls, telemetry beacons, or external CDN dependencies.
-2. **Offline Web Assets**: All fonts, CSS, JavaScript, and icons are bundled locally or gracefully fallback to offline system fonts without broken styling.
-3. **Offline Intelligence & Assets**: GeoIP resolution and Enterprise Asset Inventory are bundled into static offline tables with zero live network calls.
-4. **Embedded Search & Storage**: Embedded SQLite FTS5, DuckDB analytical engine, and local Parquet writers eliminate the need for heavy external cloud databases.
+1. **Zero External Sockets**: No external DNS queries, cloud API calls, telemetry beacons, or external CDN dependencies.
+2. **Offline System Typography & Assets**: All web fonts, CSS, JavaScript, and icons are bundled locally or resolve to system fonts (`Segoe UI`, `SF Pro`, `Inter`, `Roboto`, `sans-serif`) without remote `@import` rules or broken styling.
+3. **Internal Container Isolation**: In `docker-compose.prod.yml`, the bridge network `ulpf-airgap-net` enforces `internal: true`, blocking container egress to external gateways.
+4. **Internal Port Restriction**: Internal databases (MinIO, OpenSearch) do not expose management ports on the host network.
+5. **Offline Intelligence & Assets**: GeoIP resolution and Enterprise Asset Inventory are bundled into static offline tables with zero live network calls.
+6. **Embedded Engine Fallback**: Embedded SQLite FTS5, DuckDB vectorized engine, and local Parquet writers allow full operational capabilities without external network dependencies.
 
 ---
 
 ## 2. Air-Gap Packaging Workflow
 
 ### Step 1: Exporting Docker Image for Offline Transfer
-On an internet-connected build station:
+On an air-gap staging / signing station:
 ```bash
-# Build the self-contained image
+# Build self-contained image
 docker build -t ulpf:1.0.0 -f docker/Dockerfile .
 
-# Save the image tarball to USB/optical media
+# Save image tarball to optical media / approved data diode
 docker save ulpf:1.0.0 | gzip > ulpf_airgap_bundle_v1.0.0.tar.gz
 ```
 
-### Step 2: Loading & Running on the Air-Gapped Target Host
-On the isolated air-gapped system:
+### Step 2: Loading & Running on the Air-Gapped Host
+On the isolated strategic system:
 ```bash
 # Load Docker image
 docker load < ulpf_airgap_bundle_v1.0.0.tar.gz
 
-# Start ULPF container in isolated bridge network
-docker run -d \
-  --name ulpf-secure \
-  --restart unless-stopped \
-  --network none \
-  -p 8000:8000 \
-  -p 5140:5140/udp \
-  -p 1514:1514 \
-  -v /opt/ulpf/data:/app/data \
-  ulpf:1.0.0
+# Start ULPF with production compose
+docker compose -f docker-compose.prod.yml up -d
 ```
 
 ---
 
 ## 3. Verification of Air-Gap Compliance
 
-To prove air-gap compliance to evaluators:
-1. Disconnect the physical Ethernet cable / disable the network adapter on the host.
-2. Ingest telemetry logs via the web UI or local replay.
-3. Observe that log parsing, OCSF normalization, cryptographic hashing, Drain3 template mining, and SIEM search proceed without a single timeout or network error!
+To verify air-gap compliance:
+1. Run automated air-gap regression suite:
+   ```bash
+   python -m pytest tests/test_airgap.py -v
+   ```
+   - Checks that zero remote HTTP/HTTPS/CDN references exist across all dashboard HTML, CSS, and JS.
+   - Verifies `docker-compose.prod.yml` enforces `internal: true` on `ulpf-airgap-net`.
+   - Verifies MinIO and OpenSearch do not expose ports to the host network.
+2. Verify deep health check `/api/pipeline/health` returns `air_gapped: true` and `external_network_dependencies: false`.

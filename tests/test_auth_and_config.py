@@ -171,3 +171,39 @@ def test_state_persistence_across_restart(tmp_path):
     audits = session_mgr3.get_audit_trail()
     assert len(audits) >= 1
     assert any(a["action"] == "ONBOARDING_APPROVED_AND_PUBLISHED" for a in audits)
+
+
+def test_production_credentials_fail_fast():
+    """Confirms production mode strictly rejects default/weak credentials."""
+    # 1. Reject default minioadmin
+    with pytest.raises(ValidationError) as exc:
+        Settings(
+            ULPF_DEMO_MODE=False,
+            ULPF_SECRET_KEY="A" * 32,
+            ULPF_STORAGE_BACKEND="minio",
+            ULPF_MINIO_ENDPOINT="minio:9000",
+            ULPF_MINIO_ACCESS_KEY="minioadmin",
+            ULPF_MINIO_SECRET_KEY="valid-secret-key-12345",
+        )
+    assert "strictly forbidden in production" in str(exc.value)
+
+    # 2. Reject default OpenSearch password
+    with pytest.raises(ValidationError) as exc:
+        Settings(
+            ULPF_DEMO_MODE=False,
+            ULPF_SECRET_KEY="A" * 32,
+            ULPF_SEARCH_BACKEND="opensearch",
+            ULPF_OPENSEARCH_URL="http://opensearch:9200",
+            ULPF_OPENSEARCH_USERNAME="ulpf_writer",
+            ULPF_OPENSEARCH_PASSWORD="admin",
+        )
+    assert "strictly forbidden in production" in str(exc.value)
+
+    # 3. Verify redaction masks secrets
+    s = Settings(
+        ULPF_DEMO_MODE=True,
+        ULPF_SECRET_KEY="my-secret-key-123456789",
+    )
+    redacted = s.to_redacted_dict()
+    assert redacted["ULPF_SECRET_KEY"] == "********"
+    assert "********" in repr(s)
