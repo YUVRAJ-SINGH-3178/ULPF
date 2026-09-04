@@ -5,7 +5,7 @@
 [![Python: 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![OCSF: v1.1.0](https://img.shields.io/badge/OCSF-v1.1.0-green.svg)](https://schema.ocsf.io/)
 [![Security Audit: Clean](https://img.shields.io/badge/pip--audit-0_vulnerabilities-brightgreen.svg)](docs/SECURITY.md)
-[![Tests: 67 Passed](https://img.shields.io/badge/tests-67%20passed%20%7C%20100%25-brightgreen.svg)](tests/)
+[![Tests: 92 Passed](https://img.shields.io/badge/tests-92%20passed%20%7C%20100%25-brightgreen.svg)](tests/)
 
 **National Technical Research Organisation (NTRO) — Smart India Hackathon 2026**  
 **Problem Statement ID**: SIH26156 | **Classification**: Strategic / CII Cyber Infrastructure
@@ -212,3 +212,10 @@ python -m pytest tests/test_concurrency_and_load.py -v
 - 🛡️ **[Security Architecture & Threat Model](docs/SECURITY.md)**: Threat catalog (STRIDE), mitigation matrix, rate limiting, and dependency audit.
 - 📊 **[Empirical Benchmarks Report](docs/BENCHMARKS.md)**: Methodology, hardware specs, and measured throughput/latency numbers.
 - 🧹 **[Technical Debt & Verification Catalog](docs/TECH_DEBT.md)**: Phase-by-phase inventory of eliminated shortcuts and hardened components.
+
+---
+
+## 📄 9. License
+
+This project is licensed under the terms of the **Apache License 2.0**.  
+See the [LICENSE](LICENSE) file in the root directory for the full license text.
