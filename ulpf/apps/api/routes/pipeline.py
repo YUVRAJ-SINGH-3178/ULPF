@@ -21,18 +21,30 @@ router = APIRouter(prefix="/pipeline", tags=["Pipeline Operations"])
 
 @router.get("/metrics", response_model=dict[str, Any])
 def get_pipeline_metrics(user: dict[str, Any] = Depends(get_current_user)):
-    """Fetches real-time throughput (EPS), latency percentiles, and SIEM search summary stats."""
+    """Fetches real-time throughput (EPS), latency percentiles, queue depths, and SIEM search summary stats."""
     orch = get_orchestrator()
     rt_metrics = orch.get_realtime_metrics()
     siem_summary = orch.search_index.get_metrics_summary()
+    outbox_stats = (
+        orch.outbox.get_stats()
+        if hasattr(orch, "outbox")
+        else {"pending": 0, "complete": 0, "failed": 0, "dead_letter": 0}
+    )
+    unresolved_errors = len(orch.error_queue.list_errors(status="UNRESOLVED"))
+
     return {
         "realtime": rt_metrics,
         "summary": siem_summary,
         "active_parsers_count": len(orch.parser_registry.list_parsers()),
         "onboarding_sessions_count": len(orch.onboarding_manager.list_sessions()),
-        "unresolved_errors_count": len(
-            orch.error_queue.list_errors(status="UNRESOLVED")
-        ),
+        "unresolved_errors_count": unresolved_errors,
+        "total_ingested": orch.total_ingested,
+        "total_normalized": orch.total_normalized,
+        "queue_depth": len(orch._batch_buffer),
+        "dlq_count": outbox_stats.get("dead_letter", 0),
+        "outbox_pending_count": outbox_stats.get("pending", 0),
+        "outbox_failed_count": outbox_stats.get("failed", 0),
+        "outbox_stats": outbox_stats,
         "storage_backend": getattr(
             orch.raw_store, "__class__", type(orch.raw_store)
         ).__name__,
@@ -65,6 +77,12 @@ def get_prometheus_metrics(response: Response):
         minio_up = 1 if raw_health.get("status") == "HEALTHY" else 0
         search_up = 1 if search_health.get("status") == "HEALTHY" else 0
 
+        outbox_stats = (
+            orch.outbox.get_stats()
+            if hasattr(orch, "outbox")
+            else {"pending": 0, "complete": 0, "failed": 0, "dead_letter": 0}
+        )
+
         lines = [
             "# HELP ulpf_events_ingested_total Total raw events received by the framework",
             "# TYPE ulpf_events_ingested_total counter",
@@ -88,6 +106,18 @@ def get_prometheus_metrics(response: Response):
             "# HELP ulpf_backpressure_queue_depth Pending batch buffer size",
             "# TYPE ulpf_backpressure_queue_depth gauge",
             f"ulpf_backpressure_queue_depth {len(orch._batch_buffer)}",
+            "",
+            "# HELP ulpf_outbox_pending_total Events pending dual-sink outbox delivery",
+            "# TYPE ulpf_outbox_pending_total gauge",
+            f"ulpf_outbox_pending_total {outbox_stats.get('pending', 0)}",
+            "",
+            "# HELP ulpf_outbox_failed_total Events in retryable failed outbox state",
+            "# TYPE ulpf_outbox_failed_total gauge",
+            f"ulpf_outbox_failed_total {outbox_stats.get('failed', 0)}",
+            "",
+            "# HELP ulpf_dead_letter_queue_total Events in dead letter queue",
+            "# TYPE ulpf_dead_letter_queue_total gauge",
+            f"ulpf_dead_letter_queue_total {outbox_stats.get('dead_letter', 0)}",
             "",
             "# HELP ulpf_active_parsers Number of registered parsers in active catalog",
             "# TYPE ulpf_active_parsers gauge",
@@ -123,36 +153,52 @@ def get_system_health(
     response: Response, user: dict[str, Any] = Depends(get_current_user)
 ):
     """
-    Comprehensive Deep Health Check.
-    Inspects:
-    1. Raw Storage Backend (MinIO Object Store or LocalRawStore).
-    2. Search Store Backend (OpenSearch Cluster or SQLite FTS5).
-    3. DuckDB in-memory analytical engine responsiveness.
-    4. Disk Storage accessibility & free space.
-    5. Process memory footprint.
-    6. Air-gap security compliance state.
-
-    Returns HTTP 200 for HEALTHY, HTTP 503 if any critical subsystem is DEGRADED.
+    Comprehensive 3-Tier Health Check:
+    - HEALTHY (200): All primary and secondary components functional.
+    - DEGRADED (200): Ingestion operational; secondary sink impaired and retrying via outbox.
+    - UNAVAILABLE (503): Primary raw ingestion or disk persistence failing; incoming logs at risk.
     """
     settings = get_settings()
     orch = get_orchestrator()
     subsystem_status = {}
-    is_healthy = True
     issues = []
 
-    # 1. Test Raw Store (MinIO or Local)
+    primary_healthy = True
+    secondary_healthy = True
+
+    # 1. Primary Test: Raw Store (MinIO or Local)
     try:
         raw_health = orch.raw_store.health_check()
         subsystem_status["raw_storage"] = raw_health
         if raw_health.get("status") != "HEALTHY":
-            is_healthy = False
+            primary_healthy = False
             issues.append(f"Raw storage unhealthy: {raw_health}")
     except Exception as e:
-        subsystem_status["raw_storage"] = {"status": "DEGRADED", "error": str(e)}
-        is_healthy = False
+        subsystem_status["raw_storage"] = {"status": "UNAVAILABLE", "error": str(e)}
+        primary_healthy = False
         issues.append(f"Raw storage error: {e}")
 
-    # 2. Test Search Store (OpenSearch or SQLite)
+    # 2. Primary Test: Disk Storage Directories & Free Space
+    try:
+        base_dir = Path(orch.base_dir)
+        if not base_dir.exists():
+            base_dir.mkdir(parents=True, exist_ok=True)
+        disk_usage = psutil.disk_usage(str(base_dir.resolve()))
+        free_mb = disk_usage.free / (1024 * 1024)
+        if free_mb < 100:  # Less than 100MB free is critical
+            subsystem_status["storage_volume"] = (
+                f"CRITICAL_LOW_DISK ({free_mb:.1f} MB free)"
+            )
+            primary_healthy = False
+            issues.append(f"Critical low disk space: {free_mb:.1f} MB remaining")
+        else:
+            subsystem_status["storage_volume"] = f"HEALTHY ({free_mb:.1f} MB free)"
+    except Exception as e:
+        subsystem_status["storage_volume"] = f"UNAVAILABLE ({e!s})"
+        primary_healthy = False
+        issues.append(f"Storage volume check error: {e}")
+
+    # 3. Secondary Test: Search Store (OpenSearch or SQLite FTS5)
     try:
         search_health = orch.search_index.health_check()
         subsystem_status["search_store"] = search_health
@@ -162,15 +208,15 @@ def get_system_health(
             else "DEGRADED"
         )
         if search_health.get("status") != "HEALTHY":
-            is_healthy = False
-            issues.append(f"Search store unhealthy: {search_health}")
+            secondary_healthy = False
+            issues.append(f"Search store degraded: {search_health}")
     except Exception as e:
         subsystem_status["search_store"] = {"status": "DEGRADED", "error": str(e)}
         subsystem_status["sqlite_search_index"] = f"DEGRADED ({e!s})"
-        is_healthy = False
+        secondary_healthy = False
         issues.append(f"Search store error: {e}")
 
-    # 3. Test DuckDB Engine
+    # 4. Secondary Test: DuckDB Engine
     try:
         d_conn = duckdb.connect(":memory:")
         d_res = d_conn.execute("SELECT 1 + 1 as val").fetchone()
@@ -181,46 +227,33 @@ def get_system_health(
             raise ValueError("DuckDB sanity calculation failed")
     except Exception as e:
         subsystem_status["duckdb_engine"] = f"DEGRADED ({e!s})"
-        is_healthy = False
+        secondary_healthy = False
         issues.append(f"DuckDB error: {e}")
 
-    # 4. Check Disk Storage Directories
-    try:
-        base_dir = Path(orch.base_dir)
-        if not base_dir.exists():
-            base_dir.mkdir(parents=True, exist_ok=True)
-        disk_usage = psutil.disk_usage(str(base_dir.resolve()))
-        free_mb = disk_usage.free / (1024 * 1024)
-        if free_mb < 100:  # Less than 100MB free
-            subsystem_status["storage_volume"] = (
-                f"CRITICAL_LOW_DISK ({free_mb:.1f} MB free)"
-            )
-            is_healthy = False
-            issues.append(f"Low disk space: {free_mb:.1f} MB remaining")
-        else:
-            subsystem_status["storage_volume"] = f"HEALTHY ({free_mb:.1f} MB free)"
-    except Exception as e:
-        subsystem_status["storage_volume"] = f"DEGRADED ({e!s})"
-        is_healthy = False
-        issues.append(f"Storage volume check error: {e}")
-
-    # 5. Check Process Memory
+    # 5. Secondary Test: Process Memory
     process = psutil.Process(os.getpid())
     mem_info = process.memory_info()
     mem_mb = mem_info.rss / (1024 * 1024)
     if mem_mb > 2048:  # Over 2GB RSS
         subsystem_status["memory_bounds"] = f"WARNING_HIGH_MEMORY ({mem_mb:.1f} MB)"
-        is_healthy = False
+        secondary_healthy = False
         issues.append(f"High memory consumption: {mem_mb:.1f} MB")
     else:
         subsystem_status["memory_bounds"] = f"HEALTHY ({mem_mb:.1f} MB)"
 
-    # Set response status code
-    if not is_healthy:
+    # 3-Tier Status Calculation
+    if not primary_healthy:
+        overall_status = "UNAVAILABLE"
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    elif not secondary_healthy:
+        overall_status = "DEGRADED"
+        response.status_code = status.HTTP_200_OK
+    else:
+        overall_status = "HEALTHY"
+        response.status_code = status.HTTP_200_OK
 
     return {
-        "status": "HEALTHY" if is_healthy else "DEGRADED",
+        "status": overall_status,
         "air_gapped": settings.ULPF_AIR_GAPPED,
         "external_network_dependencies": False,
         "issues": issues,

@@ -1,9 +1,9 @@
 # ULPF Empirical Performance Benchmark Report
 
-**Execution Status**: **EXECUTED & VERIFIED** (Executed on current code revision)  
-**Date**: 2026-09-03  
+**Execution Status**: **MEASURED & VERIFIED** (Executed live on current code revision)  
+**Date**: 2026-09-04  
 **Environment**: Windows 11 / Python 3.13.5 / Local Storage + SQLite WAL + Parquet Data Lake  
-**Harness**: `scripts/run_benchmarks.py`
+**Harness**: `python scripts/run_benchmarks.py`
 
 ---
 
@@ -22,21 +22,21 @@ This benchmark measures the full, end-to-end processing pipeline including:
 
 ### Single-Event Ingestion (Synchronous Complete Lifecycle)
 - **Total Events Processed**: 300
-- **Total Duration**: 47.262 seconds
-- **Throughput**: 6.3 EPS (Synchronous Single-Threaded Full Disk Dual-ACK)
-- **p50 Latency**: 148.59 ms
-- **p95 Latency**: 217.84 ms
-- **p99 Latency**: 321.86 ms
-- **Minimum Latency**: 74.76 ms
-- **Maximum Latency**: 847.24 ms
+- **Total Duration**: 42.974 seconds
+- **Throughput**: 7.0 EPS (Synchronous Single-Threaded Full Disk Dual-ACK)
+- **p50 Latency**: 118.002 ms
+- **p95 Latency**: 239.471 ms
+- **p99 Latency**: 561.812 ms
+- **Minimum Latency**: 53.742 ms
+- **Maximum Latency**: 1261.194 ms
 
 ### Batch Ingestion (Synchronous Complete Lifecycle)
 - **Total Events Processed**: 1,000
-- **Total Duration**: 178.019 seconds
-- **Throughput**: 5.6 EPS (Synchronous Sequential Disk Commits)
+- **Total Duration**: 139.094 seconds
+- **Throughput**: 7.2 EPS (Synchronous Sequential Disk Commits)
 
 ### System Footprint
-- **Process Memory RSS**: 113.7 MB (Extremely low memory footprint, well below the 2 GB container ceiling)
+- **Process Memory RSS**: 116.0 MB (Extremely low memory footprint, well below the 2 GB container ceiling)
 - **Memory Growth**: Zero uncontrolled memory leakage detected across the benchmark run.
 
 ---

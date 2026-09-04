@@ -21,6 +21,11 @@ from ulpf.packages.schemas.models import RawStorageRef, VerificationResult
 class BaseRawStore(ABC):
     """
     Abstract interface for write-once immutable raw storage.
+
+    Preservation Contract (Contract B):
+    Lossless canonical UTF-8 byte-stream preservation. The payload is stored exactly as ingested
+    without mutation, truncation, masking, or field stripping. Cryptographic SHA-256 integrity
+    is computed and verified at write time and stored alongside the object for non-repudiation.
     """
 
     @abstractmethod

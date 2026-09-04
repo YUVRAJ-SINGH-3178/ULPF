@@ -187,13 +187,25 @@ def test_production_credentials_fail_fast():
         )
     assert "strictly forbidden in production" in str(exc.value)
 
-    # 2. Reject default OpenSearch password
+    # 2. Reject plaintext OpenSearch URL in production
     with pytest.raises(ValidationError) as exc:
         Settings(
             ULPF_DEMO_MODE=False,
             ULPF_SECRET_KEY="A" * 32,
             ULPF_SEARCH_BACKEND="opensearch",
             ULPF_OPENSEARCH_URL="http://opensearch:9200",
+            ULPF_OPENSEARCH_USERNAME="ulpf_writer",
+            ULPF_OPENSEARCH_PASSWORD="StrongProductionPassword123!",
+        )
+    assert "strictly forbidden in production" in str(exc.value)
+
+    # 3. Reject default OpenSearch password
+    with pytest.raises(ValidationError) as exc:
+        Settings(
+            ULPF_DEMO_MODE=False,
+            ULPF_SECRET_KEY="A" * 32,
+            ULPF_SEARCH_BACKEND="opensearch",
+            ULPF_OPENSEARCH_URL="https://opensearch:9200",
             ULPF_OPENSEARCH_USERNAME="ulpf_writer",
             ULPF_OPENSEARCH_PASSWORD="admin",
         )

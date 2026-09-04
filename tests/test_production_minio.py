@@ -104,7 +104,7 @@ def test_minio_deterministic_direct_lookup_without_scanning(monkeypatch, mock_mi
 
 
 def test_minio_retrieve_by_storage_uri(monkeypatch, mock_minio):
-    """Verifies direct O(1) retrieval using raw_storage_uri ('bucket/object_key')."""
+    """Verifies deterministic direct object lookup without bucket-wide scanning using raw_storage_uri ('bucket/object_key')."""
     mock_client, store_data = mock_minio
     monkeypatch.setattr("minio.Minio", lambda **kwargs: mock_client)
 

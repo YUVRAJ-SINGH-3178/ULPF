@@ -84,7 +84,10 @@ class Settings(BaseSettings):
         default="ulpf-events-v1", description="Index prefix for versioned OCSF events"
     )
     ULPF_OPENSEARCH_VERIFY_CERTS: bool = Field(
-        default=False, description="Verify SSL certs for OpenSearch"
+        default=True, description="Verify SSL certs for OpenSearch"
+    )
+    ULPF_OPENSEARCH_CA_CERTS: str | None = Field(
+        default=None, description="Path to CA bundle file for OpenSearch TLS verification"
     )
 
     # Local Storage Paths & Sinks
@@ -244,9 +247,24 @@ class Settings(BaseSettings):
                     raise ValueError(
                         "FATAL CONFIGURATION ERROR: ULPF_OPENSEARCH_URL is required when ULPF_SEARCH_BACKEND=opensearch in production."
                     )
+                if not self.ULPF_OPENSEARCH_URL.startswith("https://"):
+                    raise ValueError(
+                        "FATAL SECURITY ERROR: In production, ULPF_OPENSEARCH_URL must use https://. "
+                        "Plaintext HTTP client traffic is strictly forbidden in production."
+                    )
+                if not self.ULPF_OPENSEARCH_VERIFY_CERTS:
+                    raise ValueError(
+                        "FATAL SECURITY ERROR: In production, ULPF_OPENSEARCH_VERIFY_CERTS must be True to prevent Man-in-the-Middle (MitM) attacks. "
+                        "Disabling certificate verification is strictly forbidden in production."
+                    )
                 if not self.ULPF_OPENSEARCH_USERNAME:
                     raise ValueError(
                         "FATAL SECURITY ERROR: ULPF_OPENSEARCH_USERNAME must be configured in production."
+                    )
+                if self.ULPF_OPENSEARCH_USERNAME.strip().lower() in FORBIDDEN_CREDENTIALS or self.ULPF_OPENSEARCH_USERNAME.strip().lower() == "admin":
+                    raise ValueError(
+                        f"FATAL SECURITY ERROR: OpenSearch user '{self.ULPF_OPENSEARCH_USERNAME}' is forbidden in production. "
+                        "Configure a dedicated least-privileged application service account (e.g. 'ulpf_writer')."
                     )
                 if not self.ULPF_OPENSEARCH_PASSWORD:
                     raise ValueError(

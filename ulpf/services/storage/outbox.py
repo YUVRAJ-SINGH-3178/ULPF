@@ -10,6 +10,8 @@ Duplicates are strictly preferred over silent data loss.
 
 import json
 import logging
+import os
+from pathlib import Path
 import sqlite3
 import threading
 import time
@@ -39,6 +41,31 @@ class OutboxManager:
         self._lock = threading.Lock()
         self._init_db()
 
+    @staticmethod
+    def _verify_filesystem_safety(db_path: str):
+        """
+        Verifies that db_path is on a safe local filesystem.
+        Fails fast if mounted over unsafe network filesystems (CIFS, NFS, SMB) in production.
+        """
+        resolved = Path(db_path).resolve()
+        if os.name == "posix" and os.path.exists("/proc/mounts"):
+            try:
+                with open("/proc/mounts", "r") as m:
+                    for line in m:
+                        parts = line.split()
+                        if len(parts) >= 3:
+                            mount_point, fs_type = parts[1], parts[2]
+                            if str(resolved).startswith(mount_point):
+                                if fs_type.lower() in ["cifs", "smbfs", "nfs", "nfs4", "vboxsf"]:
+                                    raise RuntimeError(
+                                        f"FATAL: Unsafe shared/network filesystem detected ({fs_type} at {mount_point}) for Outbox SQLite. "
+                                        "SQLite WAL mode on network filesystems risks silent database corruption. Aborting startup."
+                                    )
+            except RuntimeError:
+                raise
+            except Exception as e:
+                logger.debug(f"Filesystem safety check non-fatal error: {e}")
+
     def _get_connection(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path, timeout=10.0, check_same_thread=False)
         conn.execute("PRAGMA journal_mode=WAL;")
@@ -47,9 +74,27 @@ class OutboxManager:
         return conn
 
     def _init_db(self):
+        self._verify_filesystem_safety(self.db_path)
         with self._lock:
             conn = self._get_connection()
             try:
+                cursor = conn.cursor()
+                cursor.execute("PRAGMA journal_mode;")
+                actual_mode = cursor.fetchone()[0].upper()
+                if actual_mode != "WAL":
+                    from ulpf.packages.config.settings import get_settings
+                    settings = get_settings()
+                    if settings.ULPF_ENV == "production" or not settings.ULPF_DEMO_MODE:
+                        raise RuntimeError(
+                            f"FATAL: SQLite WAL mode could not be activated on {self.db_path} (current mode: {actual_mode}). "
+                            "Production durability requires WAL mode on a filesystem supporting POSIX byte-range locking. Aborting startup."
+                        )
+                    else:
+                        logger.warning(
+                            f"SQLite WAL mode could not be activated on {self.db_path} (current mode: {actual_mode}). "
+                            "Check that the filesystem supports POSIX byte-range locking."
+                        )
+
                 with conn:
                     conn.execute("""
                         CREATE TABLE IF NOT EXISTS outbox_entries (
@@ -315,3 +360,32 @@ class OutboxManager:
                 }
             finally:
                 conn.close()
+
+    def get_stats(self) -> dict[str, int]:
+        """Returns metrics on outbox states."""
+        stats = {
+            "pending": 0,
+            "complete": 0,
+            "failed": 0,
+            "dead_letter": 0,
+        }
+        with self._lock:
+            conn = self._get_connection()
+            try:
+                cur = conn.cursor()
+                cur.execute(
+                    "SELECT state, count(*) FROM outbox_entries GROUP BY state"
+                )
+                for state, count in cur.fetchall():
+                    if state == OutboxState.OUTBOX_PENDING:
+                        stats["pending"] = count
+                    elif state == OutboxState.DELIVERY_COMPLETE:
+                        stats["complete"] = count
+                    elif state == OutboxState.FAILED_RETRYABLE:
+                        stats["failed"] = count
+                    elif state == OutboxState.DEAD_LETTER:
+                        stats["dead_letter"] = count
+            finally:
+                conn.close()
+        return stats
+

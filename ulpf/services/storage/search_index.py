@@ -679,6 +679,7 @@ class OpenSearchStore(BaseSearchStore):
         password: str | None = None,
         index_prefix: str = "ulpf-events-v1",
         verify_certs: bool = False,
+        ca_certs: str | None = None,
     ):
         try:
             from opensearchpy import OpenSearch
@@ -692,13 +693,17 @@ class OpenSearchStore(BaseSearchStore):
         self.audit_index = f"{index_prefix}-audit"
 
         auth = (username, password) if username and password else None
-        self.client = OpenSearch(
-            hosts=[url],
-            http_auth=auth,
-            use_ssl=url.startswith("https"),
-            verify_certs=verify_certs,
-            ssl_show_warn=False,
-        )
+        client_kwargs: dict[str, Any] = {
+            "hosts": [url],
+            "http_auth": auth,
+            "use_ssl": url.startswith("https"),
+            "verify_certs": verify_certs,
+            "ssl_show_warn": False,
+        }
+        if ca_certs:
+            client_kwargs["ca_certs"] = ca_certs
+
+        self.client = OpenSearch(**client_kwargs)
         self._ensure_index_template()
 
     def _get_current_index(self) -> str:
@@ -1073,5 +1078,6 @@ def get_search_store(settings: Settings | None = None) -> BaseSearchStore:
             password=s.ULPF_OPENSEARCH_PASSWORD,
             index_prefix=s.ULPF_OPENSEARCH_INDEX_PREFIX,
             verify_certs=s.ULPF_OPENSEARCH_VERIFY_CERTS,
+            ca_certs=s.ULPF_OPENSEARCH_CA_CERTS,
         )
     return SQLiteSearchStore(db_path=f"{s.ULPF_BASE_DATA_DIR}/search_index.db")

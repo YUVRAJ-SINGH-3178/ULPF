@@ -84,11 +84,10 @@ class ProcessingWorkerPool:
                 with self._lock:
                     self.failed_count += 1
                 self.queue.record_retry(item.item_id, str(e))
-                if item.attempts >= item.max_attempts:
-                    self.queue.task_done(item.item_id)
+                self.queue.task_done(item_id=None)
 
     def _reclaimer_loop(self):
-        """Periodically scans for expired worker leases from crashes or stalls."""
+        """Periodically scans for expired worker leases and schedules eligible retries."""
         while self.running:
             try:
                 reclaimed = self.queue.reclaim_expired_leases()
@@ -98,7 +97,17 @@ class ProcessingWorkerPool:
                     )
             except Exception as e:
                 logger.error(f"Error reclaiming expired leases: {e}")
-            for _ in range(10):
+
+            try:
+                requeued = self.queue.requeue_eligible_retries()
+                if requeued > 0:
+                    logger.info(
+                        f"Requeued {requeued} retry-pending items for processing"
+                    )
+            except Exception as e:
+                logger.error(f"Error requeuing retries: {e}")
+
+            for _ in range(5):
                 if not self.running:
                     break
                 time.sleep(1.0)

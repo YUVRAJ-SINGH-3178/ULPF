@@ -38,7 +38,7 @@ services:
     environment:
       - discovery.type=single-node
       - plugins.security.disabled=false
-      - plugins.security.ssl.http.enabled=false
+      - plugins.security.ssl.http.enabled=true
       - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${ULPF_OPENSEARCH_PASSWORD:?Error: ULPF_OPENSEARCH_PASSWORD is required}
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
       - bootstrap.memory_lock=true
@@ -56,7 +56,7 @@ services:
     networks:
       - ulpf-airgap-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "-u", "${ULPF_OPENSEARCH_USERNAME:-admin}:${ULPF_OPENSEARCH_PASSWORD}", "http://localhost:9200/_cluster/health"]
+      test: ["CMD", "curl", "-k", "-f", "-u", "${ULPF_OPENSEARCH_USERNAME}:${ULPF_OPENSEARCH_PASSWORD}", "https://localhost:9200/_cluster/health"]
       interval: 20s
       timeout: 5s
       retries: 5
@@ -89,10 +89,11 @@ services:
       - ULPF_MINIO_SECRET_KEY=${ULPF_MINIO_SECRET_KEY}
       - ULPF_MINIO_RAW_BUCKET=${ULPF_MINIO_RAW_BUCKET:-ulpf-raw}
       - ULPF_SEARCH_BACKEND=opensearch
-      - ULPF_OPENSEARCH_URL=http://opensearch:9200
-      - ULPF_OPENSEARCH_USERNAME=${ULPF_OPENSEARCH_USERNAME:-admin}
+      - ULPF_OPENSEARCH_URL=https://opensearch:9200
+      - ULPF_OPENSEARCH_USERNAME=${ULPF_OPENSEARCH_USERNAME:?Error: ULPF_OPENSEARCH_USERNAME is required}
       - ULPF_OPENSEARCH_PASSWORD=${ULPF_OPENSEARCH_PASSWORD}
       - ULPF_OPENSEARCH_INDEX_PREFIX=${ULPF_OPENSEARCH_INDEX_PREFIX:-ulpf-events-v1}
+      - ULPF_OPENSEARCH_VERIFY_CERTS=true
       - ULPF_QUEUE_BACKEND=sqlite_queue
       - PYTHONUNBUFFERED=1
     networks:
@@ -128,10 +129,11 @@ services:
       - ULPF_MINIO_SECRET_KEY=${ULPF_MINIO_SECRET_KEY}
       - ULPF_MINIO_RAW_BUCKET=${ULPF_MINIO_RAW_BUCKET:-ulpf-raw}
       - ULPF_SEARCH_BACKEND=opensearch
-      - ULPF_OPENSEARCH_URL=http://opensearch:9200
-      - ULPF_OPENSEARCH_USERNAME=${ULPF_OPENSEARCH_USERNAME:-admin}
+      - ULPF_OPENSEARCH_URL=https://opensearch:9200
+      - ULPF_OPENSEARCH_USERNAME=${ULPF_OPENSEARCH_USERNAME:?Error: ULPF_OPENSEARCH_USERNAME is required}
       - ULPF_OPENSEARCH_PASSWORD=${ULPF_OPENSEARCH_PASSWORD}
       - ULPF_OPENSEARCH_INDEX_PREFIX=${ULPF_OPENSEARCH_INDEX_PREFIX:-ulpf-events-v1}
+      - ULPF_OPENSEARCH_VERIFY_CERTS=true
       - ULPF_QUEUE_BACKEND=sqlite_queue
       - ULPF_WORKER_CONCURRENCY=${ULPF_WORKER_CONCURRENCY:-4}
       - PYTHONUNBUFFERED=1

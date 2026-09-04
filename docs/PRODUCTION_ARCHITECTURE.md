@@ -95,7 +95,7 @@ Raw events are partitioned deterministically by ingest date and source vendor:
 To avoid expensive bucket scans across millions of objects, ULPF implements **deterministic direct object lookup without bucket-wide scanning**:
 1. Upon storing each raw event, companion metadata is persisted at:
    `metadata/events/{event_id}.meta.json`
-2. Single-event lookup reads the companion metadata object in an $O(1)$ single-key GET, extracts `object_key`, and fetches the raw object directly without calling `list_objects(recursive=True)`.
+2. Single-event lookup reads the companion metadata object in a direct single-key GET, extracts `object_key`, and fetches the raw object directly without calling `list_objects(recursive=True)`.
 3. Direct URI retrieval (`retrieve_by_storage_uri`) parses `"bucket/object_key"` directly from the indexed document's `raw_storage_uri`, performing a single direct GET.
 
 ---
@@ -132,8 +132,8 @@ RAW_STORED ──► QUEUED ──► PROCESSING ──► VALIDATED ──► O
 ```
 
 ### Fault-Tolerance Rules:
-1. **Dual ACK Requirement**: An event is marked `DELIVERY_COMPLETE` **only** when both OpenSearch and Parquet successfully acknowledge the write.
-2. **Retryable Sink Failures**: If either sink fails, the event is marked `FAILED_RETRYABLE` in `outbox.db` and preserved with `attempt_count`, `last_attempt`, and `last_error`.
+1. **Dual ACK Requirement**: An event is marked `DELIVERY_COMPLETE` **only** when BOTH `opensearch_status = ACKNOWLEDGED` AND `parquet_status = ACKNOWLEDGED`. Acknowledged sinks are never retried unnecessarily upon partial retry.
+2. **Retryable Sink Failures**: If either sink fails, the event is marked `FAILED_RETRYABLE` in `outbox.db` and preserved with `attempt_count`, `last_attempt`, and `last_error`. Retries specifically target only unacknowledged sinks.
 3. **At-Least-Once Delivery**: Duplicates upon retry are strictly preferred over silent data loss. Upsert semantics in OpenSearch (`_id = event_id`) guarantee document-level idempotency.
 
 ---
@@ -144,7 +144,7 @@ The local queuing, outbox, and search index backends utilize SQLite with enterpr
 1. **WAL Mode**: `PRAGMA journal_mode=WAL;` enables concurrent non-blocking readers alongside a single active writer.
 2. **Busy Timeout**: `PRAGMA busy_timeout=5000;` prevents `database is locked` exceptions under burst load.
 3. **Synchronous Mode**: `PRAGMA synchronous=NORMAL;` guarantees durability without excessive disk flushes.
-4. **Indexed Leases**: `idx_pending_queue_lease ON pending_queue(status, last_attempt_at, attempts)` ensures $O(1)$ dequeuing and rapid visibility timeout recovery.
+4. **Indexed Leases**: `idx_pending_queue_lease ON pending_queue(status, last_attempt_at, attempts)` ensures direct, deterministic index-backed dequeuing and rapid visibility timeout recovery.
 5. **Visibility Timeout Lease Recovery**: Leased items whose workers crash or hang beyond 30 seconds are reclaimed and re-queued automatically.
-6. **Filesystem Safety Check**: Verifies that WAL mode activates successfully, alerting and failing safely if deployed over unsafe network shares lacking POSIX byte-range locking.
+6. **Filesystem Safety Check**: Verifies safe local filesystem semantics and fails fast (startup abort) if deployed over unsafe network shares (CIFS, NFS, SMB) or if WAL mode cannot be activated in production.
 7. **Documented Worker Concurrency Limit**: Maximum recommended concurrency is **16 worker threads** per node against a single SQLite queue database. This delivers > 10,000 EPS ingress throughput without lock contention.
