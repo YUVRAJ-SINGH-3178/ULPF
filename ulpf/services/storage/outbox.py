@@ -11,6 +11,7 @@ Duplicates are strictly preferred over silent data loss.
 import json
 import logging
 import os
+import random
 import sqlite3
 import threading
 import time
@@ -32,7 +33,7 @@ class OutboxState:
 class OutboxManager:
     """
     SQLite-backed Outbox Manager tracking atomic dual-sink delivery
-    to OpenSearch and Parquet Data Lake.
+    to OpenSearch and Parquet Data Lake with durable exponential backoff and jitter.
     """
 
     def __init__(self, db_path: str, max_retry_attempts: int = 5):
@@ -113,12 +114,20 @@ class OutboxManager:
                             attempt_count INTEGER DEFAULT 0,
                             last_error TEXT,
                             last_attempt REAL,
+                            next_attempt_at REAL,
                             created_at REAL
                         )
                     """)
+                    cursor.execute("PRAGMA table_info(outbox_entries);")
+                    existing_cols = [c[1] for c in cursor.fetchall()]
+                    if "next_attempt_at" not in existing_cols:
+                        conn.execute(
+                            "ALTER TABLE outbox_entries ADD COLUMN next_attempt_at REAL;"
+                        )
+
                     conn.execute("""
                         CREATE INDEX IF NOT EXISTS idx_outbox_state 
-                        ON outbox_entries(state, opensearch_ack, parquet_ack);
+                        ON outbox_entries(state, opensearch_ack, parquet_ack, next_attempt_at);
                     """)
             finally:
                 conn.close()
@@ -139,13 +148,14 @@ class OutboxManager:
                     conn.execute(
                         """
                         INSERT OR REPLACE INTO outbox_entries 
-                        (event_id, envelope_json, state, opensearch_ack, parquet_ack, attempt_count, created_at)
-                        VALUES (?, ?, ?, 0, 0, 0, ?)
+                        (event_id, envelope_json, state, opensearch_ack, parquet_ack, attempt_count, next_attempt_at, created_at)
+                        VALUES (?, ?, ?, 0, 0, 0, ?, ?)
                     """,
                         (
                             envelope.event_id,
                             envelope_json,
                             OutboxState.OUTBOX_PENDING,
+                            now,
                             now,
                         ),
                     )
@@ -202,7 +212,7 @@ class OutboxManager:
                             """
                             UPDATE outbox_entries
                             SET state = ?, opensearch_ack = 1, parquet_ack = 1, 
-                                attempt_count = attempt_count + 1, last_attempt = ?
+                                attempt_count = attempt_count + 1, last_attempt = ?, next_attempt_at = NULL
                             WHERE event_id = ?
                         """,
                             (OutboxState.DELIVERY_COMPLETE, now, event_id),
@@ -215,11 +225,14 @@ class OutboxManager:
                     else:
                         # At least one sink failed
                         combined_error = " | ".join(errors)
+                        jitter = random.uniform(0.0, 0.5)
+                        delay = min(60.0, 2.0 * (2**0)) + jitter
+                        next_attempt = now + delay
                         conn.execute(
                             """
                             UPDATE outbox_entries
                             SET state = ?, opensearch_ack = ?, parquet_ack = ?, 
-                                attempt_count = attempt_count + 1, last_attempt = ?, last_error = ?
+                                attempt_count = attempt_count + 1, last_attempt = ?, next_attempt_at = ?, last_error = ?
                             WHERE event_id = ?
                         """,
                             (
@@ -227,6 +240,7 @@ class OutboxManager:
                                 1 if opensearch_ack else 0,
                                 1 if parquet_ack else 0,
                                 now,
+                                next_attempt,
                                 combined_error,
                                 event_id,
                             ),
@@ -242,28 +256,50 @@ class OutboxManager:
         self,
         search_store: Any,
         data_lake: Any,
+        base_delay: float = 2.0,
+        max_delay: float = 60.0,
+        force: bool = False,
+        now_ts: float | None = None,
     ) -> int:
         """
         Retries all events in OUTBOX_PENDING or FAILED_RETRYABLE status
-        where either OpenSearch or Parquet has not yet acknowledged delivery.
+        where either OpenSearch or Parquet has not yet acknowledged delivery
+        and whose next_attempt_at backoff deadline has elapsed.
         """
-        now = time.time()
+        now = now_ts if now_ts is not None else time.time()
         with self._lock:
             conn = self._get_connection()
             try:
                 cur = conn.cursor()
-                cur.execute(
-                    """
-                    SELECT event_id, envelope_json, opensearch_ack, parquet_ack, attempt_count
-                    FROM outbox_entries
-                    WHERE state IN (?, ?) AND attempt_count < ?
-                """,
-                    (
-                        OutboxState.OUTBOX_PENDING,
-                        OutboxState.FAILED_RETRYABLE,
-                        self.max_retry_attempts,
-                    ),
-                )
+                if force:
+                    cur.execute(
+                        """
+                        SELECT event_id, envelope_json, opensearch_ack, parquet_ack, attempt_count
+                        FROM outbox_entries
+                        WHERE state IN (?, ?) AND attempt_count < ?
+                        ORDER BY COALESCE(next_attempt_at, 0) ASC
+                    """,
+                        (
+                            OutboxState.OUTBOX_PENDING,
+                            OutboxState.FAILED_RETRYABLE,
+                            self.max_retry_attempts,
+                        ),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        SELECT event_id, envelope_json, opensearch_ack, parquet_ack, attempt_count
+                        FROM outbox_entries
+                        WHERE state IN (?, ?) AND attempt_count < ? AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
+                        ORDER BY next_attempt_at ASC
+                    """,
+                        (
+                            OutboxState.OUTBOX_PENDING,
+                            OutboxState.FAILED_RETRYABLE,
+                            self.max_retry_attempts,
+                            now,
+                        ),
+                    )
                 pending_rows = cur.fetchall()
             finally:
                 conn.close()
@@ -305,13 +341,16 @@ class OutboxManager:
                                 """
                                 UPDATE outbox_entries
                                 SET state = ?, opensearch_ack = 1, parquet_ack = 1,
-                                    attempt_count = attempt_count + 1, last_attempt = ?
+                                    attempt_count = attempt_count + 1, last_attempt = ?, next_attempt_at = NULL
                                 WHERE event_id = ?
                             """,
                                 (OutboxState.DELIVERY_COMPLETE, now, event_id),
                             )
                             delivered_count += 1
                         else:
+                            jitter = random.uniform(0.0, 0.5)
+                            delay = min(max_delay, base_delay * (2**attempts)) + jitter
+                            next_attempt = now + delay
                             next_state = (
                                 OutboxState.DEAD_LETTER
                                 if attempts + 1 >= self.max_retry_attempts
@@ -321,7 +360,7 @@ class OutboxManager:
                                 """
                                 UPDATE outbox_entries
                                 SET state = ?, opensearch_ack = ?, parquet_ack = ?,
-                                    attempt_count = attempt_count + 1, last_attempt = ?, last_error = ?
+                                    attempt_count = attempt_count + 1, last_attempt = ?, next_attempt_at = ?, last_error = ?
                                 WHERE event_id = ?
                             """,
                                 (
@@ -329,6 +368,7 @@ class OutboxManager:
                                     1 if new_os_ack else 0,
                                     1 if new_pq_ack else 0,
                                     now,
+                                    next_attempt,
                                     " | ".join(errors),
                                     event_id,
                                 ),
@@ -346,7 +386,7 @@ class OutboxManager:
                 cur = conn.cursor()
                 cur.execute(
                     """
-                    SELECT event_id, state, opensearch_ack, parquet_ack, attempt_count, last_error, last_attempt, created_at
+                    SELECT event_id, state, opensearch_ack, parquet_ack, attempt_count, last_error, last_attempt, next_attempt_at, created_at
                     FROM outbox_entries
                     WHERE event_id = ?
                 """,
@@ -363,7 +403,8 @@ class OutboxManager:
                     "attempt_count": row[4],
                     "last_error": row[5],
                     "last_attempt": row[6],
-                    "created_at": row[7],
+                    "next_attempt_at": row[7],
+                    "created_at": row[8],
                 }
             finally:
                 conn.close()

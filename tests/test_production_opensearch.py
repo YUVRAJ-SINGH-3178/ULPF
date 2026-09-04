@@ -5,10 +5,12 @@ includes forensic pointers (raw_storage_uri, sha256_hash, trace_id), and
 strictly EXCLUDES raw_payload from OpenSearch documents in production.
 """
 
+import inspect
 from unittest.mock import MagicMock
 
 import pytest
 
+from ulpf.packages.config.settings import Settings
 from ulpf.packages.schemas.models import (
     EventEnvelope,
     FormatType,
@@ -119,3 +121,72 @@ def test_opensearch_excludes_raw_payload_and_preserves_forensic_pointers(
     assert len(actions) == 1
     assert actions[0]["_id"] == "opensearch-evt-001"
     assert "raw_payload" not in actions[0]["_source"]
+
+
+def test_opensearch_constructor_defaults_verify_certs_true(
+    monkeypatch, mock_opensearch
+):
+    """
+    Verifies that OpenSearchStore defaults verify_certs to True in its constructor signature
+    and passes verify_certs=True to the underlying OpenSearch client by default.
+    """
+    mock_cls, mock_client = mock_opensearch
+    monkeypatch.setattr("opensearchpy.OpenSearch", mock_cls)
+
+    # 1. Verify constructor signature default
+    sig = inspect.signature(OpenSearchStore.__init__)
+    assert sig.parameters["verify_certs"].default is True
+
+    # 2. Verify client instantiation uses verify_certs=True
+    _ = OpenSearchStore(
+        url="https://opensearch.internal:9200",
+        username="ulpf_writer",
+        password="ProductionPassword123!",
+    )
+    mock_cls.assert_called_once()
+    client_kwargs = mock_cls.call_args[1]
+    assert client_kwargs["verify_certs"] is True
+    assert client_kwargs["use_ssl"] is True
+
+
+def test_opensearch_production_tls_and_cert_verification_enforced():
+    """
+    Verifies that production Settings strictly enforce HTTPS and certificate verification
+    when ULPF_SEARCH_BACKEND='opensearch' and ULPF_DEMO_MODE=False.
+    """
+    # Insecure plaintext HTTP URL must be rejected
+    with pytest.raises(ValueError, match="must use https://"):
+        Settings(
+            ULPF_DEMO_MODE=False,
+            ULPF_SECRET_KEY="production-secret-key-at-least-32-chars-long",
+            ULPF_SEARCH_BACKEND="opensearch",
+            ULPF_OPENSEARCH_URL="http://opensearch.internal:9200",
+            ULPF_OPENSEARCH_USERNAME="ulpf_writer",
+            ULPF_OPENSEARCH_PASSWORD="ProductionPassword123!",
+            ULPF_OPENSEARCH_VERIFY_CERTS=True,
+        )
+
+    # Disabling certificate verification in production must be rejected
+    with pytest.raises(ValueError, match="ULPF_OPENSEARCH_VERIFY_CERTS must be True"):
+        Settings(
+            ULPF_DEMO_MODE=False,
+            ULPF_SECRET_KEY="production-secret-key-at-least-32-chars-long",
+            ULPF_SEARCH_BACKEND="opensearch",
+            ULPF_OPENSEARCH_URL="https://opensearch.internal:9200",
+            ULPF_OPENSEARCH_USERNAME="ulpf_writer",
+            ULPF_OPENSEARCH_PASSWORD="ProductionPassword123!",
+            ULPF_OPENSEARCH_VERIFY_CERTS=False,
+        )
+
+    # Valid production settings must pass
+    valid = Settings(
+        ULPF_DEMO_MODE=False,
+        ULPF_SECRET_KEY="production-secret-key-at-least-32-chars-long",
+        ULPF_SEARCH_BACKEND="opensearch",
+        ULPF_OPENSEARCH_URL="https://opensearch.internal:9200",
+        ULPF_OPENSEARCH_USERNAME="ulpf_writer",
+        ULPF_OPENSEARCH_PASSWORD="ProductionPassword123!",
+        ULPF_OPENSEARCH_VERIFY_CERTS=True,
+    )
+    assert valid.ULPF_OPENSEARCH_VERIFY_CERTS is True
+    assert valid.ULPF_OPENSEARCH_URL.startswith("https://")

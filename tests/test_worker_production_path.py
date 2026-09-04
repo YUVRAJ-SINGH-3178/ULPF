@@ -172,6 +172,92 @@ def test_worker_exponential_backoff_and_retry_scheduling(tmp_path):
     q.task_done(second_lease.item_id)
 
 
+def test_requeue_eligible_retries_atomic_on_memory_full(tmp_path):
+    """
+    Verifies that requeue_eligible_retries() never marks an item QUEUED
+    and loses it when _mem_queue is full. It must remain RETRY_PENDING
+    until memory admission succeeds.
+    """
+    db_file = str(tmp_path / "atomic_requeue_test.db")
+    # Queue capacity = 1
+    q = DurableEventQueue(maxsize=1, db_path=db_file)
+
+    # 1. Fill memory queue with item-1
+    item1 = QueueItem(item_id="item-1", raw_payload="payload-1", max_attempts=3)
+    assert q.put(item1) is True
+    assert q.size() == 1
+
+    # 2. Directly insert an item into SQLite in RETRY_PENDING state with next_attempt_at <= now
+    now = time.time()
+    conn = sqlite3.connect(db_file)
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO pending_queue 
+            (item_id, raw_payload, transport, client_ip, vendor_hint, product_hint, enqueued_at, attempts, max_attempts, status, last_attempt_at, next_attempt_at, last_error)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'RETRY_PENDING', ?, ?, ?)
+        """,
+            (
+                "retry-item-pending",
+                "pending payload",
+                "syslog",
+                "127.0.0.1",
+                "test",
+                "test",
+                now,
+                1,
+                3,
+                now - 10,
+                now - 5,
+                "initial failure",
+            ),
+        )
+    conn.close()
+
+    # 3. Attempt requeue while memory queue is full
+    requeued = q.requeue_eligible_retries()
+    assert requeued == 0  # Memory admission failed, so zero items requeued
+
+    # 4. Verify item in SQLite is STILL RETRY_PENDING (not lost or falsely marked QUEUED)
+    conn = sqlite3.connect(db_file)
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT status FROM pending_queue WHERE item_id = ?",
+        ("retry-item-pending",),
+    )
+    status = cur.fetchone()[0]
+    conn.close()
+    assert status == "RETRY_PENDING"
+
+    # 5. Free capacity by dequeuing item-1
+    leased1 = q.get(timeout=1.0)
+    assert leased1 is not None
+    assert leased1.item_id == "item-1"
+    assert q.size() == 0
+
+    # 6. Now requeue again: memory admission succeeds, so status transitions to QUEUED
+    requeued2 = q.requeue_eligible_retries()
+    assert requeued2 == 1
+    assert q.size() == 1
+
+    conn = sqlite3.connect(db_file)
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT status FROM pending_queue WHERE item_id = ?",
+        ("retry-item-pending",),
+    )
+    status2 = cur.fetchone()[0]
+    conn.close()
+    assert status2 == "QUEUED"
+
+    # 7. Drain and clean up
+    leased2 = q.get(timeout=1.0)
+    assert leased2 is not None
+    assert leased2.item_id == "retry-item-pending"
+    q.task_done("item-1")
+    q.task_done("retry-item-pending")
+
+
 def test_outbox_dual_ack_and_unacknowledged_sink_only_retry(tmp_path):
     """
     Verifies that DELIVERY_COMPLETE requires BOTH OpenSearch ACK and Parquet ACK.
@@ -221,8 +307,11 @@ def test_outbox_dual_ack_and_unacknowledged_sink_only_retry(tmp_path):
     data_lake.reset_mock()
     data_lake.write_batch.side_effect = None
 
-    # Retry pending outbox
-    retried_count = outbox.retry_pending_outbox(search_store, data_lake)
+    # Prove that backoff deadline prevents immediate retry loops
+    assert outbox.retry_pending_outbox(search_store, data_lake) == 0
+
+    # Retry pending outbox once backoff has elapsed / forced
+    retried_count = outbox.retry_pending_outbox(search_store, data_lake, force=True)
     assert retried_count == 1
 
     # CRITICAL: OpenSearch was already ACKed, so it must NEVER be called again!

@@ -97,11 +97,17 @@ def test_outbox_opensearch_failure_keeps_event_durable_and_retryable(
     assert status["state"] == OutboxState.FAILED_RETRYABLE
     assert status["opensearch_ack"] is False
     assert status["parquet_ack"] is True
-    assert "OpenSearch cluster unreachable" in status["last_error"]
+    assert status["next_attempt_at"] is not None
+    assert status["next_attempt_at"] > 0
 
-    # Now simulate OpenSearch recovering: retry pending outbox
+    # Verify backoff prevents immediate tight-loop retry
+    assert outbox.retry_pending_outbox(mock_search, mock_data_lake) == 0
+
+    # Now simulate OpenSearch recovering: retry pending outbox once backoff elapsed
     mock_search.index_event.side_effect = None  # Recovered!
-    repaired_count = outbox.retry_pending_outbox(mock_search, mock_data_lake)
+    repaired_count = outbox.retry_pending_outbox(
+        mock_search, mock_data_lake, force=True
+    )
     assert repaired_count == 1
 
     final_status = outbox.get_outbox_status(sample_envelope.event_id)
@@ -133,10 +139,17 @@ def test_outbox_parquet_failure_keeps_event_durable_and_retryable(
     assert status["state"] == OutboxState.FAILED_RETRYABLE
     assert status["opensearch_ack"] is True
     assert status["parquet_ack"] is False
+    assert status["next_attempt_at"] is not None
+    assert status["next_attempt_at"] > 0
 
-    # Simulate disk freed: retry pending outbox
+    # Verify backoff prevents immediate tight-loop retry
+    assert outbox.retry_pending_outbox(mock_search, mock_data_lake) == 0
+
+    # Simulate disk freed: retry pending outbox once backoff elapsed
     mock_data_lake.write_batch.side_effect = None  # Recovered!
-    repaired_count = outbox.retry_pending_outbox(mock_search, mock_data_lake)
+    repaired_count = outbox.retry_pending_outbox(
+        mock_search, mock_data_lake, force=True
+    )
     assert repaired_count == 1
 
     final_status = outbox.get_outbox_status(sample_envelope.event_id)

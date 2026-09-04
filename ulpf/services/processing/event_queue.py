@@ -235,31 +235,30 @@ class DurableEventQueue:
                     expired_items = cur.fetchall()
 
                     for r in expired_items:
-                        conn.execute(
-                            """
-                            UPDATE pending_queue
-                            SET status = 'QUEUED', last_error = 'Visibility timeout expired (worker restart/crash)'
-                            WHERE item_id = ?
-                        """,
-                            (r[0],),
+                        item = QueueItem(
+                            item_id=r[0],
+                            raw_payload=r[1],
+                            transport=r[2],
+                            client_ip=r[3],
+                            vendor_hint=r[4],
+                            product_hint=r[5],
+                            enqueued_at=r[6],
+                            attempts=r[7],
+                            max_attempts=r[8] or 3,
                         )
-                        reclaimed_count += 1
                         try:
-                            self._mem_queue.put_nowait(
-                                QueueItem(
-                                    item_id=r[0],
-                                    raw_payload=r[1],
-                                    transport=r[2],
-                                    client_ip=r[3],
-                                    vendor_hint=r[4],
-                                    product_hint=r[5],
-                                    enqueued_at=r[6],
-                                    attempts=r[7],
-                                    max_attempts=r[8] or 3,
-                                )
+                            self._mem_queue.put_nowait(item)
+                            conn.execute(
+                                """
+                                UPDATE pending_queue
+                                SET status = 'QUEUED', last_error = 'Visibility timeout expired (worker restart/crash)'
+                                WHERE item_id = ?
+                            """,
+                                (r[0],),
                             )
+                            reclaimed_count += 1
                         except queue.Full:
-                            pass
+                            break
 
                     # 2. Dead-letter items that exceeded max attempts
                     conn.execute(
@@ -460,10 +459,6 @@ class DurableEventQueue:
                     eligible_rows = cur.fetchall()
 
                     for r in eligible_rows:
-                        conn.execute(
-                            "UPDATE pending_queue SET status = 'QUEUED' WHERE item_id = ?",
-                            (r[0],),
-                        )
                         item = QueueItem(
                             item_id=r[0],
                             raw_payload=r[1],
@@ -477,9 +472,14 @@ class DurableEventQueue:
                         )
                         try:
                             self._mem_queue.put_nowait(item)
+                            conn.execute(
+                                "UPDATE pending_queue SET status = 'QUEUED' WHERE item_id = ?",
+                                (r[0],),
+                            )
                             requeued_count += 1
                         except queue.Full:
-                            pass
+                            # Memory admission failed: leave RETRY_PENDING so subsequent reclamation cycles retry
+                            break
             finally:
                 conn.close()
 

@@ -76,6 +76,11 @@ def refresh_token(request: RefreshTokenRequest):
                 detail="Provided token is not a refresh token",
             )
         username = payload.get("sub")
+        if not settings.ULPF_DEMO_MODE and username in USERS_DB:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Built-in demo accounts are disabled in production mode.",
+            )
         if not username or username not in USERS_DB:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

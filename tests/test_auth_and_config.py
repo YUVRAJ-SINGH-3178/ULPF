@@ -8,7 +8,14 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from ulpf.apps.api.auth import hash_password, verify_password
+from ulpf.apps.api.auth import (
+    LoginRequest,
+    create_access_token,
+    create_refresh_token,
+    hash_password,
+    verify_password,
+    verify_user,
+)
 from ulpf.apps.api.main import app
 from ulpf.packages.config.settings import Settings, reset_settings
 from ulpf.packages.schemas.models import FormatType, ParserDefinition
@@ -104,6 +111,71 @@ def test_auth_prod_mode_enforcement(monkeypatch):
         "/api/auth/me", headers={"Authorization": "Bearer invalid.token.payload"}
     )
     assert resp_bad.status_code == 401
+
+
+def test_demo_credentials_blocked_when_non_demo_mode():
+    """
+    Regression test: Built-in demo accounts (admin, operator, analyst, reviewer)
+    MUST NOT be usable for authentication when ULPF_DEMO_MODE=False (production).
+    """
+    prod_settings = Settings(
+        ULPF_DEMO_MODE=False,
+        ULPF_SECRET_KEY="production-secret-key-at-least-32-chars-long",
+    )
+    reset_settings(prod_settings)
+
+    client = TestClient(app)
+
+    # 1. Direct verify_user call must return None for demo credentials
+    assert verify_user(LoginRequest(username="admin", password="admin123")) is None
+    assert (
+        verify_user(LoginRequest(username="operator", password="operator123")) is None
+    )
+    assert verify_user(LoginRequest(username="analyst", password="analyst123")) is None
+    assert (
+        verify_user(LoginRequest(username="reviewer", password="reviewer123")) is None
+    )
+
+    # 2. Login endpoint must reject all built-in demo credentials with 401
+    demo_creds = [
+        ("admin", "admin123"),
+        ("operator", "operator123"),
+        ("analyst", "analyst123"),
+        ("reviewer", "reviewer123"),
+    ]
+    for username, password in demo_creds:
+        resp = client.post(
+            "/api/auth/login",
+            json={"username": username, "password": password},
+        )
+        assert resp.status_code == 401, (
+            f"Expected 401 for demo user {username} in production mode, got {resp.status_code}"
+        )
+        assert "Invalid username or password" in resp.json().get("detail", "")
+
+    # 3. Even if a JWT is crafted with a demo user name, get_current_user must reject it
+    token = create_access_token(data={"sub": "admin", "role": "ADMIN"})
+    me_resp = client.get(
+        "/api/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert me_resp.status_code == 401
+    assert (
+        "Built-in demo accounts are disabled in production mode"
+        in me_resp.json().get("detail", "")
+    )
+
+    # 4. Refresh token for demo user must also be rejected
+    ref_token = create_refresh_token(data={"sub": "admin", "role": "ADMIN"})
+    ref_resp = client.post(
+        "/api/auth/refresh",
+        json={"refresh_token": ref_token},
+    )
+    assert ref_resp.status_code == 401
+    assert (
+        "Built-in demo accounts are disabled in production mode"
+        in ref_resp.json().get("detail", "")
+    )
 
 
 def test_state_persistence_across_restart(tmp_path):

@@ -678,7 +678,7 @@ class OpenSearchStore(BaseSearchStore):
         username: str | None = None,
         password: str | None = None,
         index_prefix: str = "ulpf-events-v1",
-        verify_certs: bool = False,
+        verify_certs: bool = True,
         ca_certs: str | None = None,
     ):
         try:

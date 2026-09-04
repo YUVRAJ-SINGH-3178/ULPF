@@ -118,6 +118,10 @@ def create_refresh_token(data: dict) -> str:
 
 
 def verify_user(credentials: LoginRequest) -> dict[str, Any] | None:
+    settings = get_settings()
+    # Built-in demo credentials cannot be used when DEMO_MODE is disabled in production
+    if not settings.ULPF_DEMO_MODE:
+        return None
     user = USERS_DB.get(credentials.username)
     if not user:
         return None
@@ -154,6 +158,12 @@ def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"},
             )
         username: str = payload.get("sub")
+        if not settings.ULPF_DEMO_MODE and username in USERS_DB:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Built-in demo accounts are disabled in production mode.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         if username is None or username not in USERS_DB:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
