@@ -10,6 +10,7 @@
 - **Project Title**: Universal Log Pre-processing Framework (ULPF)
 - **Problem Statement ID**: SIH26156
 - **Organization**: National Technical Research Organisation (NTRO)
+- **Author & Lead Architect**: Yuvraj Singh (satishyuvraj.singh3178@gmail.com)
 - **Category**: Software / Miscellaneous
 - **Team Scope**: Enterprise Perimeter Network Device Telemetry (Firewalls, Routers, IDS/IPS, Proxies)
 - **Core Pillars**:

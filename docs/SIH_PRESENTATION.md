@@ -14,7 +14,7 @@
 
 - **Organization**: National Technical Research Organisation (NTRO)
 - **Problem Statement ID**: SIH26156
-- **Team**: Hackathon Finalist Team
+- **Author & Lead Architect**: Yuvraj Singh (satishyuvraj.singh3178@gmail.com)
 - **Core Principles**:
   - **Lossless**: Original raw bytes preserved with SHA-256 integrity verification.
   - **Normalized**: Security telemetry normalized to OCSF 1.1.0.

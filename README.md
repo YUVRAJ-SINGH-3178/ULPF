@@ -8,7 +8,8 @@
 [![Tests: 92 Passed](https://img.shields.io/badge/tests-92%20passed%20%7C%20100%25-brightgreen.svg)](tests/)
 
 **National Technical Research Organisation (NTRO) — Smart India Hackathon 2026**  
-**Problem Statement ID**: SIH26156 | **Classification**: Strategic / CII Cyber Infrastructure
+**Problem Statement ID**: SIH26156 | **Classification**: Strategic / CII Cyber Infrastructure  
+**Author & Lead Architect**: [Yuvraj Singh](https://github.com/YUVRAJ-SINGH-3178) (<satishyuvraj.singh3178@gmail.com>)
 
 ---
 
@@ -215,7 +216,9 @@ python -m pytest tests/test_concurrency_and_load.py -v
 
 ---
 
-## 📄 9. License
-
+## 📄 9. License & Ownership
+ 
+Copyright © 2026 **Yuvraj Singh** (<satishyuvraj.singh3178@gmail.com>). All rights reserved.
+ 
 This project is licensed under the terms of the **Apache License 2.0**.  
 See the [LICENSE](LICENSE) file in the root directory for the full license text.

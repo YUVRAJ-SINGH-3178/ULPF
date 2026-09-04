@@ -24,7 +24,10 @@ def restore_backup(archive_path: Path, target_data_dir: Path) -> bool:
 
     try:
         with tarfile.open(archive_path, "r:gz") as tar:
-            tar.extractall(path=temp_extract_dir)
+            if hasattr(tarfile, "data_filter"):
+                tar.extractall(path=temp_extract_dir, filter="data")
+            else:
+                tar.extractall(path=temp_extract_dir)
 
         # Locate extracted backup folder
         extracted_dirs = [d for d in temp_extract_dir.iterdir() if d.is_dir()]
