@@ -11,10 +11,10 @@ Duplicates are strictly preferred over silent data loss.
 import json
 import logging
 import os
-from pathlib import Path
 import sqlite3
 import threading
 import time
+from pathlib import Path
 from typing import Any
 
 from ulpf.packages.schemas.models import EventEnvelope
@@ -56,7 +56,13 @@ class OutboxManager:
                         if len(parts) >= 3:
                             mount_point, fs_type = parts[1], parts[2]
                             if str(resolved).startswith(mount_point):
-                                if fs_type.lower() in ["cifs", "smbfs", "nfs", "nfs4", "vboxsf"]:
+                                if fs_type.lower() in [
+                                    "cifs",
+                                    "smbfs",
+                                    "nfs",
+                                    "nfs4",
+                                    "vboxsf",
+                                ]:
                                     raise RuntimeError(
                                         f"FATAL: Unsafe shared/network filesystem detected ({fs_type} at {mount_point}) for Outbox SQLite. "
                                         "SQLite WAL mode on network filesystems risks silent database corruption. Aborting startup."
@@ -83,6 +89,7 @@ class OutboxManager:
                 actual_mode = cursor.fetchone()[0].upper()
                 if actual_mode != "WAL":
                     from ulpf.packages.config.settings import get_settings
+
                     settings = get_settings()
                     if settings.ULPF_ENV == "production" or not settings.ULPF_DEMO_MODE:
                         raise RuntimeError(
@@ -373,9 +380,7 @@ class OutboxManager:
             conn = self._get_connection()
             try:
                 cur = conn.cursor()
-                cur.execute(
-                    "SELECT state, count(*) FROM outbox_entries GROUP BY state"
-                )
+                cur.execute("SELECT state, count(*) FROM outbox_entries GROUP BY state")
                 for state, count in cur.fetchall():
                     if state == OutboxState.OUTBOX_PENDING:
                         stats["pending"] = count
@@ -388,4 +393,3 @@ class OutboxManager:
             finally:
                 conn.close()
         return stats
-

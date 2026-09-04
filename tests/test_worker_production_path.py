@@ -178,6 +178,7 @@ def test_outbox_dual_ack_and_unacknowledged_sink_only_retry(tmp_path):
     When one sink succeeds and the other fails, only the failed sink is retried.
     """
     from unittest.mock import MagicMock
+
     from ulpf.packages.schemas.models import EventEnvelope, RawStorageRef
     from ulpf.services.storage.outbox import OutboxManager, OutboxState
 
@@ -234,4 +235,3 @@ def test_outbox_dual_ack_and_unacknowledged_sink_only_retry(tmp_path):
     assert final_status["state"] == OutboxState.DELIVERY_COMPLETE
     assert final_status["opensearch_ack"] is True
     assert final_status["parquet_ack"] is True
-

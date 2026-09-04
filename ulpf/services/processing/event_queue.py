@@ -17,11 +17,11 @@ CONCURRENCY & ARCHITECTURE LIMITS:
 
 import logging
 import os
-from pathlib import Path
 import queue
 import sqlite3
 import threading
 import time
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -89,7 +89,13 @@ class DurableEventQueue:
                         if len(parts) >= 3:
                             mount_point, fs_type = parts[1], parts[2]
                             if str(resolved).startswith(mount_point):
-                                if fs_type.lower() in ["cifs", "smbfs", "nfs", "nfs4", "vboxsf"]:
+                                if fs_type.lower() in [
+                                    "cifs",
+                                    "smbfs",
+                                    "nfs",
+                                    "nfs4",
+                                    "vboxsf",
+                                ]:
                                     raise RuntimeError(
                                         f"FATAL: Unsafe shared/network filesystem detected ({fs_type} at {mount_point}) for SQLite queue. "
                                         "SQLite WAL mode on network filesystems risks silent database corruption. Aborting startup."
@@ -109,6 +115,7 @@ class DurableEventQueue:
                 actual_mode = cursor.fetchone()[0].upper()
                 if actual_mode != "WAL":
                     from ulpf.packages.config.settings import get_settings
+
                     settings = get_settings()
                     if settings.ULPF_ENV == "production" or not settings.ULPF_DEMO_MODE:
                         raise RuntimeError(
@@ -302,8 +309,12 @@ class DurableEventQueue:
                             ),
                         )
                 except Exception as e:
-                    logger.error(f"Durable queue SQLite commit failed for {item.item_id}: {e}")
-                    raise RuntimeError(f"Durable persistence failed before queue exposure: {e}") from e
+                    logger.error(
+                        f"Durable queue SQLite commit failed for {item.item_id}: {e}"
+                    )
+                    raise RuntimeError(
+                        f"Durable persistence failed before queue exposure: {e}"
+                    ) from e
                 finally:
                     conn.close()
 

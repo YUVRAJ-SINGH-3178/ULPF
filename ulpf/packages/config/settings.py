@@ -87,7 +87,8 @@ class Settings(BaseSettings):
         default=True, description="Verify SSL certs for OpenSearch"
     )
     ULPF_OPENSEARCH_CA_CERTS: str | None = Field(
-        default=None, description="Path to CA bundle file for OpenSearch TLS verification"
+        default=None,
+        description="Path to CA bundle file for OpenSearch TLS verification",
     )
 
     # Local Storage Paths & Sinks
@@ -261,7 +262,11 @@ class Settings(BaseSettings):
                     raise ValueError(
                         "FATAL SECURITY ERROR: ULPF_OPENSEARCH_USERNAME must be configured in production."
                     )
-                if self.ULPF_OPENSEARCH_USERNAME.strip().lower() in FORBIDDEN_CREDENTIALS or self.ULPF_OPENSEARCH_USERNAME.strip().lower() == "admin":
+                if (
+                    self.ULPF_OPENSEARCH_USERNAME.strip().lower()
+                    in FORBIDDEN_CREDENTIALS
+                    or self.ULPF_OPENSEARCH_USERNAME.strip().lower() == "admin"
+                ):
                     raise ValueError(
                         f"FATAL SECURITY ERROR: OpenSearch user '{self.ULPF_OPENSEARCH_USERNAME}' is forbidden in production. "
                         "Configure a dedicated least-privileged application service account (e.g. 'ulpf_writer')."

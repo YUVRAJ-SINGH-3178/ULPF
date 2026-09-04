@@ -321,7 +321,9 @@ def test_rbac_and_auth_bypass_prevention():
         headers={"Authorization": f"Bearer {analyst_token}"},
     )
     assert resp.status_code == 403
-    assert "Forbidden" in resp.json()["detail"] or "role" in resp.json()["detail"].lower()
+    assert (
+        "Forbidden" in resp.json()["detail"] or "role" in resp.json()["detail"].lower()
+    )
 
 
 # ==============================================================================
@@ -358,4 +360,3 @@ def test_secrets_never_leaked_in_diagnostics():
     assert "jwt" not in metrics_str
     assert "secret" not in metrics_str
     assert "password" not in metrics_str
-
